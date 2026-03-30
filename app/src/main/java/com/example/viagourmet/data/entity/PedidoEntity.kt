@@ -1,7 +1,14 @@
 package com.example.viagourmet.data.entity
 
+
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+
+// CORRECCIÓN: PedidoEntity se mueve de "data.entity" a "data.local.entity"
+// para ser consistente con DetallePedidoEntity, PedidoLibreEntity y UsuarioEntity.
+// Esto resuelve el error "Cannot resolve symbol 'pedidos'" en PedidoDao porque
+// Room KSP necesita que todas las entidades estén en el mismo package coherente
+// y que las ForeignKey de DetallePedidoEntity/PedidoLibreEntity puedan resolverla.
 
 @Entity(tableName = "pedidos")
 data class PedidoEntity(

@@ -2,13 +2,14 @@ package com.example.viagourmet.data.repository
 
 import com.example.viagourmet.Presentacion.session.RolUsuario
 import com.example.viagourmet.Presentacion.session.UsuarioSesion
-import com.example.viagourmet.data.local.dao.UsuarioDao
+import com.example.viagourmet.data.dao.UsuarioDao
 import com.example.viagourmet.data.local.mapper.crearUsuarioEntity
 import com.example.viagourmet.data.local.mapper.toSesion
 import com.example.viagourmet.data.local.util.hashPassword
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
+
 
 sealed class AuthResult {
     data class Success(val usuario: UsuarioSesion) : AuthResult()

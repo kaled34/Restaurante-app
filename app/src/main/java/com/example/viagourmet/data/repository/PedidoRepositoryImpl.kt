@@ -1,13 +1,13 @@
 package com.example.viagourmet.data.repository
 
 import com.example.viagourmet.data.api.CafeteriaApiService
-import com.example.viagourmet.data.local.dao.PedidoDao
-import com.example.viagourmet.data.local.mapper.toDomain
-import com.example.viagourmet.data.local.mapper.toDetallePedidoEntity
-import com.example.viagourmet.data.local.mapper.toEntity
-import com.example.viagourmet.data.entity.PedidoEntity
+import com.example.viagourmet.data.dao.PedidoDao
 import com.example.viagourmet.data.model.request.CrearPedidoLibreRequest
-import com.example.viagourmet.domain.model.*
+import com.example.viagourmet.domain.model.EstadoPedido
+import com.example.viagourmet.domain.model.ModuloPedido
+import com.example.viagourmet.domain.model.Pedido
+import com.example.viagourmet.domain.model.TipoPedido
+import java.time.LocalDateTime
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -20,23 +20,21 @@ class PedidoRepositoryImpl @Inject constructor(
     override suspend fun listarPedidos(): List<Pedido> {
         return try {
             val response = api.listarPedidos()
-            if (response.isSuccessful) {
-                response.body()?.data?.map { it.toDomain() } ?: emptyList()
-            } else {
-                // Fallback a local
-                dao.getAllPedidos().map { it.toDomain() }
-            }
+            if (!response.isSuccessful) return emptyList()
+            val data = response.body()?.data ?: return emptyList()
+            data.map { dto -> dto.toDomain() }
         } catch (e: Exception) {
-            dao.getAllPedidos().map { it.toDomain() }
+            emptyList()
         }
     }
 
     override suspend fun listarPorEstado(estado: EstadoPedido): List<Pedido> {
         return try {
-            val response = api.listarPedidosPorEstado(estado.name.lowercase())
-            if (response.isSuccessful) {
-                response.body()?.data?.map { it.toDomain() } ?: emptyList()
-            } else emptyList()
+            // Se usa el nombre del enum para que coincida con lo que espera el servidor
+            val response = api.listarPedidosPorEstado(estado.name)
+            if (!response.isSuccessful) return emptyList()
+            val data = response.body()?.data ?: return emptyList()
+            data.map { dto -> dto.toDomain() }
         } catch (e: Exception) {
             emptyList()
         }
@@ -45,21 +43,23 @@ class PedidoRepositoryImpl @Inject constructor(
     override suspend fun listarPorCliente(clienteId: Int): List<Pedido> {
         return try {
             val response = api.listarPedidosPorCliente(clienteId)
-            if (response.isSuccessful) {
-                response.body()?.data?.map { it.toDomain() } ?: emptyList()
-            } else emptyList()
+            if (!response.isSuccessful) return emptyList()
+            val data = response.body()?.data ?: return emptyList()
+            data.map { dto -> dto.toDomain() }
         } catch (e: Exception) {
             emptyList()
         }
     }
 
     override suspend fun cambiarEstado(idPedido: Int, estado: EstadoPedido) {
-        val response = api.cambiarEstadoPedido(idPedido, estado.name.lowercase())
+        val response = api.cambiarEstadoPedido(idPedido, estado.name)
         if (!response.isSuccessful) {
-            throw Exception("Error al cambiar estado: ${response.code()}")
+            throw Exception("Error al cambiar estado: ${response.code()} ${response.errorBody()?.string()}")
         }
-        // Actualizar local también
-        dao.actualizarEstado(idPedido, estado.name, nowString())
+        
+        // Actualizamos también en la base de datos local para mantener sincronía
+        val now = LocalDateTime.now().toString()
+        dao.actualizarEstado(idPedido, estado.name, now)
     }
 
     override suspend fun crearPedidoLibre(
@@ -73,23 +73,15 @@ class PedidoRepositoryImpl @Inject constructor(
         val req = CrearPedidoLibreRequest(
             idCliente = clienteId,
             notas = descripcion,
-            modulo = modulo.name.lowercase(),
-            tipo = tipo.name.lowercase(),
+            modulo = modulo.name,
+            tipo = tipo.name,
             minutosEntrega = minutosEntrega,
             metodoPago = if (cuentaPendiente) "cuenta_pendiente" else "efectivo"
+            // idEmpleado tiene valor por defecto 1 en el DTO
         )
         val response = api.crearPedidoLibre(req)
         if (!response.isSuccessful) {
-            throw Exception("Error al crear pedido libre: ${response.code()}")
+            throw Exception("Error al crear pedido libre: ${response.code()} ${response.errorBody()?.string()}")
         }
-    }
-
-    private fun nowString(): String {
-        val c = java.util.Calendar.getInstance()
-        return "%04d-%02d-%02dT%02d:%02d:%02d".format(
-            c.get(java.util.Calendar.YEAR), c.get(java.util.Calendar.MONTH) + 1,
-            c.get(java.util.Calendar.DAY_OF_MONTH), c.get(java.util.Calendar.HOUR_OF_DAY),
-            c.get(java.util.Calendar.MINUTE), c.get(java.util.Calendar.SECOND)
-        )
     }
 }

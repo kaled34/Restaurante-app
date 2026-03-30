@@ -2,7 +2,7 @@ package com.example.viagourmet.data.local.mapper
 
 import com.example.viagourmet.Presentacion.session.RolUsuario
 import com.example.viagourmet.Presentacion.session.UsuarioSesion
-import com.example.viagourmet.data.local.entity.UsuarioEntity
+import com.example.viagourmet.data.entity.UsuarioEntity
 import com.example.viagourmet.data.local.util.hashPassword
 
 // ── Entidad de sesión

@@ -1,7 +1,7 @@
-package com.example.viagourmet.data.local.dao
+package com.example.viagourmet.data.dao
 
 import androidx.room.*
-import com.example.viagourmet.data.local.entity.UsuarioEntity
+import com.example.viagourmet.data.entity.UsuarioEntity
 
 @Dao
 interface UsuarioDao {

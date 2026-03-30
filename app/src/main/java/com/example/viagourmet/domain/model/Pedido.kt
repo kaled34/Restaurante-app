@@ -17,7 +17,10 @@ data class Pedido(
     val itemsLibres: List<PedidoLibre> = emptyList(),
     val empleado: Empleado? = null,
     val cliente: Cliente? = null,
-    val factura: Factura? = null
+    val factura: Factura? = null,
+    // ERROR FIX 2: CocinerosScreen y CocinerosViewModel usan pedido.minutosEntrega
+    // pero el campo no existía en el modelo de dominio
+    val minutosEntrega: Int? = null
 )
 
 enum class ModuloPedido {

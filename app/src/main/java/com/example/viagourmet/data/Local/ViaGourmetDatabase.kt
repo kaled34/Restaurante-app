@@ -1,15 +1,16 @@
-package com.example.viagourmet.data.local
+package com.example.viagourmet.data.Local.util
 
 import androidx.room.Database
 import androidx.room.RoomDatabase
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import com.example.viagourmet.data.dao.PedidoDao
+import com.example.viagourmet.data.dao.UsuarioDao
 import com.example.viagourmet.data.entity.PedidoEntity
-import com.example.viagourmet.data.local.dao.PedidoDao
-import com.example.viagourmet.data.local.dao.UsuarioDao
-import com.example.viagourmet.data.local.entity.DetallePedidoEntity
-import com.example.viagourmet.data.local.entity.PedidoLibreEntity
-import com.example.viagourmet.data.local.entity.UsuarioEntity
+import com.example.viagourmet.data.entity.UsuarioEntity
+import com.example.viagourmet.data.entity.PedidoLibreEntity
+import com.example.viagourmet.data.entity.PedidoConDetalles
+import com.example.viagourmet.data.entity.DetallePedidoEntity
 
 @Database(
     entities = [

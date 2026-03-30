@@ -1,4 +1,4 @@
-package com.example.viagourmet.data.local.entity
+package com.example.viagourmet.data.entity
 
 import androidx.room.Entity
 import androidx.room.Index

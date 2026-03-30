@@ -13,4 +13,9 @@ data class DetallePedido(
 ) {
     val subtotal: BigDecimal
         get() = precioUnitario.multiply(BigDecimal(cantidad))
+
+    // ERROR FIX 3: CocinerosScreen accede a detalle.nombreProducto
+    // Se expone como propiedad calculada para no romper el modelo existente
+    val nombreProducto: String
+        get() = producto?.nombre ?: "Producto #$productoId"
 }

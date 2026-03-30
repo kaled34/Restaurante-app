@@ -1,9 +1,7 @@
-package com.example.viagourmet.data.local.entity
+package com.example.viagourmet.data.entity
 
 import androidx.room.Embedded
 import androidx.room.Relation
-import com.example.viagourmet.data.entity.PedidoEntity
-
 
 data class PedidoConDetalles(
     @Embedded val pedido: PedidoEntity,

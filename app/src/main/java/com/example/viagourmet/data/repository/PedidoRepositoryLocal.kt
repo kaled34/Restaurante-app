@@ -1,7 +1,7 @@
 package com.example.viagourmet.data.repository
 
 import com.example.viagourmet.data.entity.PedidoEntity
-import com.example.viagourmet.data.local.dao.PedidoDao
+import com.example.viagourmet.data.dao.PedidoDao
 
 import com.example.viagourmet.data.local.mapper.toDetallePedidoEntity
 import com.example.viagourmet.data.local.mapper.toDomain

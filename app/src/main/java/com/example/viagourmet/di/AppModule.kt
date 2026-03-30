@@ -1,7 +1,7 @@
 package com.example.viagourmet.di
 
 import com.example.viagourmet.data.api.CafeteriaApiService
-import com.example.viagourmet.data.local.dao.PedidoDao
+import com.example.viagourmet.data.dao.PedidoDao
 import com.example.viagourmet.data.repository.PedidoRepository
 import com.example.viagourmet.data.repository.PedidoRepositoryImpl
 import dagger.Module

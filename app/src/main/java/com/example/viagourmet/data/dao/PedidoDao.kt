@@ -1,21 +1,22 @@
-package com.example.viagourmet.data.local.dao
+package com.example.viagourmet.data.dao
 
 import androidx.room.*
+import com.example.viagourmet.data.entity.DetallePedidoEntity
+import com.example.viagourmet.data.entity.PedidoConDetalles
 import com.example.viagourmet.data.entity.PedidoEntity
-import com.example.viagourmet.data.local.entity.DetallePedidoEntity
-import com.example.viagourmet.data.local.entity.PedidoConDetalles
-import com.example.viagourmet.data.local.entity.PedidoLibreEntity
+import com.example.viagourmet.data.entity.PedidoLibreEntity
 import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface PedidoDao {
 
-
-
     @Transaction
     @Query("SELECT * FROM pedidos ORDER BY id DESC")
     fun getAllPedidosFlow(): Flow<List<PedidoConDetalles>>
 
+    @Transaction
+    @Query("SELECT * FROM pedidos ORDER BY id DESC")
+    suspend fun getAllPedidos(): List<PedidoConDetalles>
 
     @Transaction
     @Query("SELECT * FROM pedidos WHERE estado NOT IN ('ENTREGADO','CANCELADO') ORDER BY id DESC")
@@ -29,8 +30,6 @@ interface PedidoDao {
     @Query("SELECT * FROM pedidos WHERE id = :pedidoId")
     suspend fun getPedidoById(pedidoId: Int): PedidoConDetalles?
 
-    //inserciones
-
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertPedido(pedido: PedidoEntity): Long
 
@@ -40,11 +39,9 @@ interface PedidoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertItemsLibres(items: List<PedidoLibreEntity>)
 
-//actualizaciones
     @Query("UPDATE pedidos SET estado = :estado, actualizadoEn = :ahora WHERE id = :pedidoId")
     suspend fun actualizarEstado(pedidoId: Int, estado: String, ahora: String): Int
 
-//eliminaciones
     @Query("DELETE FROM pedidos")
     suspend fun deleteAll()
 }

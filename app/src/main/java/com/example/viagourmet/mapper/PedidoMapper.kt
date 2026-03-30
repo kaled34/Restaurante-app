@@ -1,16 +1,13 @@
 package com.example.viagourmet.data.local.mapper
 
+import com.example.viagourmet.data.entity.DetallePedidoEntity
+import com.example.viagourmet.data.entity.PedidoConDetalles
 import com.example.viagourmet.data.entity.PedidoEntity
-import com.example.viagourmet.data.local.entity.DetallePedidoEntity
-import com.example.viagourmet.data.local.entity.PedidoConDetalles
-
-import com.example.viagourmet.data.local.entity.PedidoLibreEntity
+import com.example.viagourmet.data.entity.PedidoLibreEntity
 import com.example.viagourmet.data.repository.ItemCarrito
 import com.example.viagourmet.domain.model.*
 import java.math.BigDecimal
 import java.time.LocalDateTime
-
-// ── Dominio de entidad
 
 fun Pedido.toEntity(): PedidoEntity = PedidoEntity(
     id = id,
@@ -50,8 +47,6 @@ fun PedidoLibre.toEntity(): PedidoLibreEntity = PedidoLibreEntity(
     creadoEn = creadoEn.toString()
 )
 
-// ── Entidad de dominio
-
 fun PedidoConDetalles.toDomain(): Pedido = Pedido(
     id = pedido.id,
     empleadoId = pedido.empleadoId,
@@ -71,7 +66,8 @@ fun PedidoConDetalles.toDomain(): Pedido = Pedido(
         apellido = pedido.clienteApellido,
         telefono = pedido.clienteTelefono,
         email = pedido.clienteEmail
-    )
+    ),
+    minutosEntrega = null
 )
 
 fun DetallePedidoEntity.toDomain(): DetallePedido = DetallePedido(
@@ -102,8 +98,6 @@ fun PedidoLibreEntity.toDomain(): PedidoLibre = PedidoLibre(
     notas = notas,
     creadoEn = LocalDateTime.parse(creadoEn)
 )
-
-// ── ItemCarrito → Entidad DetallePedido ──────────────────────────────────────
 
 fun ItemCarrito.toDetallePedidoEntity(pedidoId: Int): DetallePedidoEntity = DetallePedidoEntity(
     pedidoId = pedidoId,

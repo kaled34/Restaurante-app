@@ -18,7 +18,10 @@ data class PedidoDto(
     @SerializedName("detalles") val detalles: List<DetallePedidoDto>?,
     @SerializedName("items_libres") val itemsLibres: List<PedidoLibreDto>?,
     @SerializedName("cliente") val cliente: ClienteDto?,
-    @SerializedName("factura") val factura: FacturaDto?
+    @SerializedName("factura") val factura: FacturaDto?,
+    // ERROR FIX 7: CocinerosViewModel y CocinerosScreen usan pedido.minutosEntrega
+    // Se mapea desde el campo del servidor si existe, de lo contrario null
+    @SerializedName("minutos_entrega") val minutosEntrega: Int? = null
 ) {
     fun toDomain(): Pedido {
         return Pedido(
@@ -36,7 +39,8 @@ data class PedidoDto(
             itemsLibres = itemsLibres?.map { it.toDomain() } ?: emptyList(),
             empleado = null,
             cliente = cliente?.toDomain(),
-            factura = factura?.toDomain()
+            factura = factura?.toDomain(),
+            minutosEntrega = minutosEntrega
         )
     }
 }

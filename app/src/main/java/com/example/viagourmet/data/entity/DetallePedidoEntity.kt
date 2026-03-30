@@ -1,10 +1,9 @@
-package com.example.viagourmet.data.local.entity
+package com.example.viagourmet.data.entity
 
 import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
-import com.example.viagourmet.data.entity.PedidoEntity
 
 @Entity(
     tableName = "detalle_pedido",
