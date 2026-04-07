@@ -2,12 +2,14 @@ package com.example.viagourmet.di
 
 import android.content.Context
 import androidx.room.Room
+import com.example.viagourmet.data.Local.util.MIGRATION_1_2
+import com.example.viagourmet.data.Local.util.MIGRATION_2_3
+import com.example.viagourmet.data.Local.util.ViaGourmetDatabase
 
 import com.example.viagourmet.data.dao.PedidoDao
 import com.example.viagourmet.data.dao.UsuarioDao
-import com.example.viagourmet.data.local.util.MIGRATION_1_2
-import com.example.viagourmet.data.local.util.MIGRATION_2_3
-import com.example.viagourmet.data.local.util.ViaGourmetDatabase
+
+
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn

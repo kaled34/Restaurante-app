@@ -1,24 +1,38 @@
 package com.example.viagourmet.Presentacion.screens.cocinero
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.viagourmet.Presentacion.theme.Brown80
 import com.example.viagourmet.domain.model.EstadoPedido
 import com.example.viagourmet.domain.model.Pedido
 import java.time.format.DateTimeFormatter
+
+private val Green       = Color(0xFF007E67)
+private val GreenDark   = Color(0xFF005C4B)
+private val GreenMint   = Color(0xFFF0FAF7)
+private val TextDark    = Color(0xFF0D2B24)
+private val TextMid     = Color(0xFF4A7A6F)
+private val TextLight   = Color(0xFF8AADA7)
+private val CardBg      = Color(0xFFFFFFFF)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,52 +43,68 @@ fun CocinerosScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
+        containerColor = GreenMint,
         topBar = {
-            TopAppBar(
-                title = { Text("Cocina", color = Color.White, fontWeight = FontWeight.Bold) },
-                colors = TopAppBarDefaults.topAppBarColors(containerColor = Brown80),
-                actions = {
-                    IconButton(onClick = onCerrarSesion) {
-                        Icon(Icons.Default.ExitToApp, contentDescription = "Salir", tint = Color.White)
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .background(Brush.horizontalGradient(listOf(Green, GreenDark)))
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("🍳 Cocina", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Pedidos activos · CONALEP", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
                     }
+                    Box(
+                        modifier = Modifier.size(38.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.15f)).clickable { onCerrarSesion() },
+                        contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Default.ExitToApp, null, tint = Color.White, modifier = Modifier.size(20.dp)) }
                 }
-            )
+            }
         }
     ) { padding ->
-        Column(modifier = Modifier.padding(padding).fillMaxSize()) {
-
-            // Leyenda de colores
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Column(modifier = Modifier.fillMaxSize().padding(padding)) {
+            // ── Leyenda urgencia ────────────────────────────────────────────
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .background(Brush.verticalGradient(listOf(GreenDark, Green)))
+                    .padding(horizontal = 16.dp, vertical = 10.dp)
             ) {
-                UrgenciaChip(Color(0xFFE53935), "🔴 Urgente (≤35 min)")
-                UrgenciaChip(Color(0xFFFDD835), "🟡 Medio (45 min)")
-                UrgenciaChip(Color(0xFF43A047), "🟢 Normal (60 min)")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    UrgenciaTag(Color(0xFFE53935), "🔴 ≤35 min")
+                    UrgenciaTag(Color(0xFFFDD835), "🟡 45 min")
+                    UrgenciaTag(Color(0xFF43A047), "🟢 60+ min")
+                }
             }
 
-            if (uiState.isLoading) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+            when {
+                uiState.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Green)
                 }
-            } else if (uiState.pedidos.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("No hay pedidos activos", style = MaterialTheme.typography.bodyLarge)
+                uiState.pedidos.isEmpty() -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("✅", fontSize = 48.sp)
+                        Text("Sin pedidos activos", fontSize = 16.sp, color = TextLight)
+                        Text("¡Todo al corriente!", fontSize = 13.sp, color = TextLight)
+                    }
                 }
-            } else {
-                LazyColumn(
+                else -> LazyColumn(
                     modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    contentPadding = PaddingValues(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(uiState.pedidos, key = { it.id }) { pedido ->
-                        PedidoCocineroCard(
-                            pedido = pedido,
-                            onCambiarEstado = { nuevoEstado ->
-                                viewModel.cambiarEstado(pedido.id, nuevoEstado)
-                            }
-                        )
+                        CocineroCard(pedido = pedido, onCambiarEstado = { viewModel.cambiarEstado(pedido.id, it) })
                     }
+                    item { Spacer(Modifier.height(8.dp)) }
                 }
             }
 
@@ -86,112 +116,87 @@ fun CocinerosScreen(
 }
 
 @Composable
-private fun UrgenciaChip(color: Color, label: String) {
+private fun UrgenciaTag(color: Color, label: String) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
-            .background(color.copy(alpha = 0.15f), RoundedCornerShape(8.dp))
-            .padding(horizontal = 6.dp, vertical = 3.dp)
+        modifier = Modifier.clip(RoundedCornerShape(8.dp))
+            .background(Color.White.copy(alpha = 0.15f))
+            .padding(horizontal = 8.dp, vertical = 4.dp)
     ) {
-        Box(
-            modifier = Modifier
-                .size(10.dp)
-                .background(color, RoundedCornerShape(5.dp))
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(label, style = MaterialTheme.typography.labelSmall)
+        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
+        Spacer(Modifier.width(5.dp))
+        Text(label, fontSize = 11.sp, color = Color.White, fontWeight = FontWeight.Medium)
     }
 }
 
 @Composable
-fun PedidoCocineroCard(
-    pedido: Pedido,
-    onCambiarEstado: (EstadoPedido) -> Unit
-) {
+private fun CocineroCard(pedido: Pedido, onCambiarEstado: (EstadoPedido) -> Unit) {
     val urgenciaColor = when (pedido.minutosEntrega) {
         null -> Color(0xFF9E9E9E)
-        in 0..35 -> Color(0xFFE53935)   // Rojo — urgente
-        45 -> Color(0xFFFDD835)          // Amarillo — medio
-        else -> Color(0xFF43A047)        // Verde — normal
+        in 0..35 -> Color(0xFFE53935)
+        45 -> Color(0xFFFDD835)
+        else -> Color(0xFF43A047)
     }
 
-    val fmt = DateTimeFormatter.ofPattern("HH:mm")
-
     Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        modifier = Modifier.fillMaxWidth()
+            .shadow(6.dp, RoundedCornerShape(18.dp), ambientColor = Color(0xFF007E67).copy(alpha = 0.1f)),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = CardBg)
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Barra de color urgencia
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(6.dp)
-                    .background(urgenciaColor)
-            )
+            // Barra urgencia
+            Box(modifier = Modifier.fillMaxWidth().height(5.dp).background(urgenciaColor))
 
-            Column(modifier = Modifier.padding(12.dp)) {
+            Column(modifier = Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        "Pedido #${pedido.id}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Text("Pedido #${pedido.id}", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextDark)
                     pedido.minutosEntrega?.let {
-                        Surface(
-                            color = urgenciaColor.copy(alpha = 0.2f),
-                            shape = RoundedCornerShape(8.dp)
+                        Box(
+                            modifier = Modifier.clip(RoundedCornerShape(8.dp))
+                                .background(urgenciaColor.copy(alpha = 0.15f))
+                                .padding(horizontal = 10.dp, vertical = 4.dp)
                         ) {
-                            Text(
-                                "${it} min",
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold,
-                                color = urgenciaColor.copy(alpha = 1f)
-                            )
+                            Text("$it min", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = urgenciaColor)
                         }
                     }
                 }
 
-                Spacer(Modifier.height(4.dp))
-                Text("Módulo: ${pedido.modulo.name}", style = MaterialTheme.typography.bodyMedium)
-                Text("Cliente: ${pedido.cliente?.nombre ?: "Sin cliente"}", style = MaterialTheme.typography.bodySmall)
-                Text("Hora: ${pedido.creadoEn.format(fmt)}", style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.outline)
-
-                if (pedido.notas?.isNotBlank() == true) {
-                    Text("Notas: ${pedido.notas}", style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.secondary)
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    InfoChip(pedido.modulo.name)
+                    InfoChip("👤 ${pedido.cliente?.nombre ?: "Sin nombre"}")
                 }
 
-                if (pedido.detalles.isNotEmpty()) {
-                    Spacer(Modifier.height(8.dp))
-                    Text("Productos:", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
-                    pedido.detalles.forEach { detalle ->
-                        Text("  • ${detalle.cantidad}x ${detalle.nombreProducto}",
-                            style = MaterialTheme.typography.bodySmall)
+                if (pedido.notas?.isNotBlank() == true) {
+                    Box(
+                        modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFFFFF3E0)).padding(8.dp)
+                    ) {
+                        Text("📝 ${pedido.notas}", fontSize = 12.sp, color = Color(0xFFE65100))
                     }
                 }
 
-                Spacer(Modifier.height(12.dp))
-
-                // Botones cambiar estado
-                val siguienteEstado = when (pedido.estado) {
-                    EstadoPedido.PENDIENTE -> EstadoPedido.EN_PREPARACION
-                    EstadoPedido.EN_PREPARACION -> EstadoPedido.LISTO
-                    else -> null
+                if (pedido.detalles.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text("Productos", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextMid)
+                        pedido.detalles.forEach { detalle ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Box(modifier = Modifier.size(6.dp).clip(CircleShape).background(Green).align(Alignment.CenterVertically))
+                                Text("${detalle.cantidad}× ${detalle.nombreProducto}", fontSize = 13.sp, color = TextDark)
+                            }
+                        }
+                    }
                 }
-                val estadoLabel = when (pedido.estado) {
-                    EstadoPedido.PENDIENTE -> "Iniciar preparación"
-                    EstadoPedido.EN_PREPARACION -> "Marcar como listo"
-                    EstadoPedido.LISTO -> "✅ Listo para entrega"
-                    else -> null
+
+                // Botón acción
+                val (siguiente, btnLabel) = when (pedido.estado) {
+                    EstadoPedido.PENDIENTE -> EstadoPedido.EN_PREPARACION to "Iniciar preparación"
+                    EstadoPedido.EN_PREPARACION -> EstadoPedido.LISTO to "Marcar como listo"
+                    else -> null to null
                 }
 
                 Row(
@@ -199,13 +204,18 @@ fun PedidoCocineroCard(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    EstadoBadge(pedido.estado)
-                    siguienteEstado?.let { estado ->
+                    EstadoChip(pedido.estado)
+                    if (siguiente != null && btnLabel != null) {
                         Button(
-                            onClick = { onCambiarEstado(estado) },
-                            colors = ButtonDefaults.buttonColors(containerColor = Brown80)
+                            onClick = { onCambiarEstado(siguiente) },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Green),
+                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
+                            elevation = ButtonDefaults.buttonElevation(4.dp)
                         ) {
-                            Text(estadoLabel ?: "Avanzar", style = MaterialTheme.typography.labelSmall)
+                            Text(btnLabel, fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Spacer(Modifier.width(4.dp))
+                            Icon(Icons.Default.ArrowForward, null, tint = Color.White, modifier = Modifier.size(14.dp))
                         }
                     }
                 }
@@ -215,16 +225,24 @@ fun PedidoCocineroCard(
 }
 
 @Composable
-private fun EstadoBadge(estado: EstadoPedido) {
+private fun InfoChip(text: String) {
+    Box(
+        modifier = Modifier.clip(RoundedCornerShape(6.dp))
+            .background(Color(0xFFE6F4F1))
+            .padding(horizontal = 8.dp, vertical = 3.dp)
+    ) { Text(text, fontSize = 11.sp, color = Color(0xFF007E67), fontWeight = FontWeight.Medium) }
+}
+
+@Composable
+private fun EstadoChip(estado: EstadoPedido) {
     val (color, label) = when (estado) {
-        EstadoPedido.PENDIENTE -> Color(0xFFFF9800) to "Pendiente"
-        EstadoPedido.EN_PREPARACION -> Color(0xFF2196F3) to "En preparación"
-        EstadoPedido.LISTO -> Color(0xFF4CAF50) to "Listo"
-        EstadoPedido.ENTREGADO -> Color(0xFF9E9E9E) to "Entregado"
-        EstadoPedido.CANCELADO -> Color(0xFFF44336) to "Cancelado"
+        EstadoPedido.PENDIENTE      -> Color(0xFFFF9800) to "Pendiente"
+        EstadoPedido.EN_PREPARACION -> Color(0xFF1565C0) to "En preparación"
+        EstadoPedido.LISTO          -> Color(0xFF2E7D32) to "Listo ✓"
+        EstadoPedido.ENTREGADO      -> Color(0xFF9E9E9E) to "Entregado"
+        EstadoPedido.CANCELADO      -> Color(0xFFC62828) to "Cancelado"
     }
-    Surface(color = color.copy(alpha = 0.15f), shape = RoundedCornerShape(8.dp)) {
-        Text(label, modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            style = MaterialTheme.typography.labelSmall, color = color)
-    }
+    Box(
+        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(color.copy(alpha = 0.12f)).padding(horizontal = 10.dp, vertical = 5.dp)
+    ) { Text(label, fontSize = 12.sp, color = color, fontWeight = FontWeight.SemiBold) }
 }

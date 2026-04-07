@@ -1,7 +1,11 @@
 package com.example.viagourmet.Presentacion.screens.mipedido
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -9,14 +13,27 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.viagourmet.Presentacion.theme.Brown80
-import com.example.viagourmet.Presentacion.theme.GreenSuccess
 import com.example.viagourmet.domain.model.EstadoPedido
 import com.example.viagourmet.domain.model.Pedido
+
+private val Green       = Color(0xFF007E67)
+private val GreenDark   = Color(0xFF005C4B)
+private val GreenLight  = Color(0xFF00A882)
+private val GreenPale   = Color(0xFFE6F4F1)
+private val GreenMint   = Color(0xFFF0FAF7)
+private val TextDark    = Color(0xFF0D2B24)
+private val TextMid     = Color(0xFF4A7A6F)
+private val TextLight   = Color(0xFF8AADA7)
+private val CardBg      = Color(0xFFFFFFFF)
+private val ErrorRed    = Color(0xFFD32F2F)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -27,73 +44,56 @@ fun MiPedidoScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
+        containerColor = GreenMint,
         topBar = {
-            TopAppBar(
-                title = { Text("Estado de mi pedido") },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Regresar")
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .background(Brush.horizontalGradient(listOf(Green, GreenDark)))
+                    .statusBarsPadding()
+                    .padding(horizontal = 16.dp, vertical = 14.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Box(
+                        modifier = Modifier.size(36.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.2f)).clickable { onNavigateBack() },
+                        contentAlignment = Alignment.Center
+                    ) { Icon(Icons.Default.ArrowBack, null, tint = Color.White, modifier = Modifier.size(20.dp)) }
+                    Column {
+                        Text("Estado de mi pedido", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Seguimiento en tiempo real", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Brown80,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimary,
-                    navigationIconContentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            )
+                }
+            }
         }
     ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
+        Box(modifier = Modifier.fillMaxSize().padding(paddingValues)) {
             when {
-                uiState.isLoading -> {
-                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                uiState.isLoading -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = Green)
                 }
-
                 uiState.noPedidoActivo -> {
                     val entregado = uiState.ultimoEntregado
                     if (entregado != null) {
-                        PedidoContenido(
-                            pedido = entregado,
-                            modifier = Modifier.fillMaxSize()
-                        )
+                        PedidoContenido(pedido = entregado, modifier = Modifier.fillMaxSize())
                     } else {
-                        // Sin ningún pedido
-                        Column(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(32.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text("🍽️", style = MaterialTheme.typography.displayMedium)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Text(
-                                text = "No tienes pedidos activos",
-                                style = MaterialTheme.typography.titleLarge
-                            )
-                            Text(
-                                text = "Haz un pedido desde el menú para verlo aquí",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Button(onClick = onNavigateBack) {
-                                Text("Ir al menú")
+                        Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(12.dp),
+                                modifier = Modifier.padding(32.dp)
+                            ) {
+                                Text("🍽", fontSize = 56.sp)
+                                Text("Sin pedidos activos", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextDark)
+                                Text("Haz un pedido desde el menú para verlo aquí", fontSize = 14.sp, color = TextLight)
+                                Spacer(Modifier.height(4.dp))
+                                Button(onClick = onNavigateBack, shape = RoundedCornerShape(12.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Green)) {
+                                    Text("Ir al menú", color = Color.White, fontWeight = FontWeight.Bold)
+                                }
                             }
                         }
                     }
                 }
-
-                else -> {
-                    PedidoContenido(
-                        pedido = uiState.pedidoActivo!!,
-                        modifier = Modifier.fillMaxSize()
-                    )
-                }
+                else -> PedidoContenido(pedido = uiState.pedidoActivo!!, modifier = Modifier.fillMaxSize())
             }
         }
     }
@@ -102,174 +102,139 @@ fun MiPedidoScreen(
 @Composable
 private fun PedidoContenido(pedido: Pedido, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier
-            .padding(24.dp)
-            .verticalScroll(rememberScrollState()),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Número de pedido
-        Text(
-            text = "Pedido #${pedido.id}",
-            style = MaterialTheme.typography.headlineMedium,
-            fontWeight = FontWeight.Bold,
-            color = Brown80
-        )
-
-        // Hora de recogida
-        pedido.notas?.let { nota ->
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = Brown80.copy(alpha = 0.1f)
-                )
+        // Header del pedido
+        Card(
+            modifier = Modifier.fillMaxWidth()
+                .shadow(8.dp, RoundedCornerShape(20.dp), ambientColor = Green.copy(alpha = 0.15f)),
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBg)
+        ) {
+            Box(
+                modifier = Modifier.fillMaxWidth()
+                    .background(Brush.horizontalGradient(listOf(Green, GreenLight)))
+                    .padding(20.dp)
             ) {
                 Row(
-                    modifier = Modifier.padding(16.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("🕐", style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        text = nota,
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = Brown80,
-                        fontWeight = FontWeight.Medium
-                    )
+                    Column {
+                        Text("Pedido #${pedido.id}", fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
+                        pedido.notas?.let { Text(it, fontSize = 12.sp, color = Color.White.copy(alpha = 0.85f)) }
+                    }
+                    Text(pedido.estado.icono(), fontSize = 36.sp)
                 }
             }
         }
 
         // Timeline de estados
-        Text(
-            text = "Estado del pedido",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
+        Text("Estado del pedido", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextDark)
 
-        val estadosTimeline = listOf(
-            EstadoPedido.PENDIENTE to "Pedido recibido",
-            EstadoPedido.EN_PREPARACION to "En preparación",
-            EstadoPedido.LISTO to "Listo para recoger"
-        )
+        Card(
+            modifier = Modifier.fillMaxWidth()
+                .shadow(4.dp, RoundedCornerShape(18.dp), ambientColor = Green.copy(alpha = 0.08f)),
+            shape = RoundedCornerShape(18.dp),
+            colors = CardDefaults.cardColors(containerColor = CardBg)
+        ) {
+            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
+                val estados = listOf(
+                    EstadoPedido.PENDIENTE      to "Pedido recibido",
+                    EstadoPedido.EN_PREPARACION to "En preparación",
+                    EstadoPedido.LISTO          to "Listo para recoger"
+                )
+                val indexActual = estados.indexOfFirst { it.first == pedido.estado }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                estadosTimeline.forEachIndexed { index, (estado, label) ->
-                    val indexActual = estadosTimeline.indexOfFirst { it.first == pedido.estado }
-                    val isPasado = index <= indexActual
-                    val isActual = pedido.estado == estado
+                estados.forEachIndexed { index, (estado, label) ->
+                    val isPasado  = index <= indexActual
+                    val isActual  = pedido.estado == estado
 
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                        horizontalArrangement = Arrangement.spacedBy(14.dp)
                     ) {
-                        Surface(
-                            shape = MaterialTheme.shapes.extraLarge,
-                            color = when {
-                                isActual -> GreenSuccess
-                                isPasado -> Brown80
-                                else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                            },
-                            modifier = Modifier.size(22.dp)
-                        ) {
-                            if (isPasado && !isActual) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        "✓",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = Color.White
-                                    )
-                                }
-                            }
-                        }
-
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isActual) FontWeight.Bold else FontWeight.Normal,
-                            color = when {
-                                isActual -> GreenSuccess
-                                isPasado -> MaterialTheme.colorScheme.onSurface
-                                else -> MaterialTheme.colorScheme.outline
-                            },
-                            modifier = Modifier.weight(1f)
-                        )
-
-                        if (isActual) {
-                            Surface(
-                                color = GreenSuccess.copy(alpha = 0.15f),
-                                shape = MaterialTheme.shapes.small
+                        // Indicador
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(
+                                modifier = Modifier.size(24.dp).clip(CircleShape)
+                                    .background(when {
+                                        isActual -> Green
+                                        isPasado -> GreenLight
+                                        else     -> Color(0xFFE0E0E0)
+                                    }),
+                                contentAlignment = Alignment.Center
                             ) {
                                 Text(
-                                    text = "Actual",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = GreenSuccess,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                    if (isPasado && !isActual) "✓" else if (isActual) "●" else "○",
+                                    fontSize = 10.sp, color = Color.White, fontWeight = FontWeight.Bold
+                                )
+                            }
+                            if (index < estados.lastIndex) {
+                                Box(
+                                    modifier = Modifier.width(2.dp).height(24.dp)
+                                        .background(if (index < indexActual) GreenLight else Color(0xFFE0E0E0))
                                 )
                             }
                         }
-                    }
 
-                    if (index < estadosTimeline.lastIndex) {
-                        Box(
-                            modifier = Modifier
-                                .padding(start = 10.dp)
-                                .width(2.dp)
-                                .height(24.dp)
-                        ) {
-                            Surface(
-                                color = if (index < indexActual) Brown80
-                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                modifier = Modifier.fillMaxSize()
-                            ) {}
+                        Column {
+                            Text(
+                                text = label,
+                                fontSize = 14.sp,
+                                fontWeight = if (isActual) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isActual) Green else if (isPasado) TextMid else TextLight
+                            )
+                            if (isActual) {
+                                Box(
+                                    modifier = Modifier.clip(RoundedCornerShape(4.dp)).background(GreenPale).padding(horizontal = 8.dp, vertical = 2.dp)
+                                ) { Text("Actual", fontSize = 11.sp, color = Green, fontWeight = FontWeight.SemiBold) }
+                            }
                         }
                     }
                 }
             }
         }
 
-        // Banner de estado especial
+        // Banner especial
         when (pedido.estado) {
-            EstadoPedido.CANCELADO -> {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.errorContainer
-                    )
-                ) {
-                    Text(
-                        text = "tu pedido ha sido cancelado",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onErrorContainer,
-                        modifier = Modifier.padding(16.dp)
-                    )
-                }
-            }
             EstadoPedido.LISTO -> {
                 Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = GreenSuccess.copy(alpha = 0.1f)
-                    )
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = GreenPale)
                 ) {
-                    Text(
-                        text = "Tu pedido está listo, por favor pasa a recogerlo.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = GreenSuccess,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("🎉", fontSize = 24.sp)
+                        Text("¡Tu pedido está listo! Pasa a recogerlo.", fontSize = 14.sp, color = Green, fontWeight = FontWeight.SemiBold)
+                    }
+                }
+            }
+            EstadoPedido.CANCELADO -> {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = ErrorRed.copy(alpha = 0.08f))
+                ) {
+                    Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("❌", fontSize = 22.sp)
+                        Text("Tu pedido ha sido cancelado.", fontSize = 14.sp, color = ErrorRed, fontWeight = FontWeight.SemiBold)
+                    }
                 }
             }
             EstadoPedido.ENTREGADO -> {
                 Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceVariant
-                    )
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color(0xFFF5F5F5))
                 ) {
-                    Text(
-                        text = " Pedido entregado. disfrutalo",
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(16.dp)
-                    )
+                    Row(modifier = Modifier.padding(14.dp), horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text("✅", fontSize = 22.sp)
+                        Text("Pedido entregado. ¡Buen provecho!", fontSize = 14.sp, color = TextMid, fontWeight = FontWeight.Medium)
+                    }
                 }
             }
             else -> {}
@@ -277,48 +242,36 @@ private fun PedidoContenido(pedido: Pedido, modifier: Modifier = Modifier) {
 
         // Resumen de productos
         if (pedido.detalles.isNotEmpty()) {
-            Text(
-                text = "Resumen",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
-            )
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+            Text("Resumen", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextDark)
+            Card(
+                modifier = Modifier.fillMaxWidth().shadow(4.dp, RoundedCornerShape(18.dp)),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = CardBg)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     pedido.detalles.forEach { detalle ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = "${detalle.cantidad}x ${detalle.producto?.nombre ?: "Producto"}",
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = "$${"%.2f".format(detalle.subtotal)}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Brown80,
-                                fontWeight = FontWeight.Medium
-                            )
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text("${detalle.cantidad}× ${detalle.producto?.nombre ?: "Producto"}", fontSize = 14.sp, color = TextDark)
+                            Text("$${"%.2f".format(detalle.subtotal)}", fontSize = 14.sp, color = Green, fontWeight = FontWeight.SemiBold)
                         }
                     }
-                    HorizontalDivider()
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Total", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                        Text(
-                            text = "$${"%.2f".format(pedido.detalles.sumOf { it.subtotal })}",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = Brown80
-                        )
+                    Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Color(0xFFCCE8E2)))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                        Text("Total", fontWeight = FontWeight.Bold, fontSize = 15.sp, color = TextDark)
+                        Text("$${"%.2f".format(pedido.detalles.sumOf { it.subtotal })}", fontWeight = FontWeight.ExtraBold, fontSize = 16.sp, color = Green)
                     }
                 }
             }
         }
+
+        Spacer(Modifier.height(8.dp))
     }
+}
+
+private fun EstadoPedido.icono(): String = when (this) {
+    EstadoPedido.PENDIENTE      -> "🟡"
+    EstadoPedido.EN_PREPARACION -> "🔵"
+    EstadoPedido.LISTO          -> "🟢"
+    EstadoPedido.ENTREGADO      -> "✅"
+    EstadoPedido.CANCELADO      -> "❌"
 }
