@@ -1,3 +1,7 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// ARCHIVO 1: NavegacionGraph.kt  (reemplaza el existente)
+// Agrega la ruta Screen.EditarMenu para que el admin pueda navegar al editor
+// ─────────────────────────────────────────────────────────────────────────────
 package com.example.viagourmet.Presentacion.navegacion
 
 import androidx.compose.runtime.Composable
@@ -8,6 +12,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.viagourmet.Presentacion.screens.admin.AdminPedidosScreen
+import com.example.viagourmet.Presentacion.screens.admin.EditarMenuScreen          // ← NUEVO
 import com.example.viagourmet.Presentacion.screens.cocinero.CocinerosScreen
 import com.example.viagourmet.Presentacion.screens.cuenta.CuentaScreen
 import com.example.viagourmet.Presentacion.screens.login.LoginScreen
@@ -29,6 +34,7 @@ sealed class Screen(val route: String) {
     object Cocinero        : Screen("cocinero")
     object MiPedido        : Screen("mi_pedido")
     object ModuloLibre     : Screen("modulo_libre")
+    object EditarMenu      : Screen("editar_menu")                  // ← NUEVO
     object ProductoDetalle : Screen("producto/{productoId}") {
         fun createRoute(productoId: Int) = "producto/$productoId"
     }
@@ -140,7 +146,9 @@ fun NavegacionGraph(sessionManager: SessionManager) {
                     navController.navigate(Screen.Login.route) {
                         popUpTo(Screen.Admin.route) { inclusive = true }
                     }
-                }
+                },
+                // ← NUEVO: botón en AdminPedidosScreen para ir al editor de menú
+                onEditarMenu = { navController.navigate(Screen.EditarMenu.route) }
             )
         }
 
@@ -152,6 +160,13 @@ fun NavegacionGraph(sessionManager: SessionManager) {
                         popUpTo(Screen.Cocinero.route) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        // ── NUEVA RUTA ───────────────────────────────────────────────────────
+        composable(Screen.EditarMenu.route) {
+            EditarMenuScreen(
+                onNavigateBack = { navController.popBackStack() }
             )
         }
     }

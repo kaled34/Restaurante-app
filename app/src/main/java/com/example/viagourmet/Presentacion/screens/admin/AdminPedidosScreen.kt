@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExitToApp
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
@@ -84,7 +85,8 @@ private fun ModuloPedido.label(): String = when (this) {
 @Composable
 fun AdminPedidosScreen(
     viewModel: AdminPedidosViewModel = hiltViewModel(),
-    onCerrarSesion: () -> Unit
+    onCerrarSesion: () -> Unit,
+    onEditarMenu: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -123,6 +125,7 @@ fun AdminPedidosScreen(
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         AdminTopBtn(Icons.Default.Refresh) { viewModel.onEvent(AdminEvent.Cargar) }
+                        AdminTopBtn(Icons.Default.Edit){ onEditarMenu() }
                         AdminTopBtn(Icons.Default.ExitToApp) { onCerrarSesion() }
                     }
                 }
