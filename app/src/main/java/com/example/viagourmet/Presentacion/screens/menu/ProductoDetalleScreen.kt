@@ -21,12 +21,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.example.viagourmet.Presentacion.components.CantidadSelector
-import com.example.viagourmet.data.mock.MockData
 import com.example.viagourmet.domain.model.Producto
 
-// Paleta CONALEP — igual que el resto de la app
 private val Green      = Color(0xFF007E67)
 private val GreenDark  = Color(0xFF005C4B)
 private val GreenLight = Color(0xFF00A882)
@@ -43,10 +42,13 @@ private val ErrorRed   = Color(0xFFD32F2F)
 fun ProductoDetalleScreen(
     productoId: Int,
     onNavigateBack: () -> Unit,
-    onAgregarAlPedido: (Producto, Int) -> Unit
+    onAgregarAlPedido: (Producto, Int) -> Unit,
+    viewModel: ProductoDetalleViewModel = hiltViewModel()
 ) {
+    // Busca desde el repositorio reactivo, no desde MockData.
+    // Así refleja los cambios que el admin haya hecho en EditarMenuScreen.
     val producto = remember(productoId) {
-        MockData.productos.find { it.id == productoId }
+        viewModel.getProductoById(productoId)
     }
 
     var cantidad by remember { mutableIntStateOf(1) }
@@ -140,7 +142,6 @@ fun ProductoDetalleScreen(
                     .padding(20.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Selector de cantidad
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -160,7 +161,6 @@ fun ProductoDetalleScreen(
                         )
                     }
 
-                    // Línea divisora
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -168,7 +168,6 @@ fun ProductoDetalleScreen(
                             .background(Color(0xFFCCE8E2))
                     )
 
-                    // Total y botón
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
@@ -217,7 +216,6 @@ fun ProductoDetalleScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Imagen del producto
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -233,13 +231,13 @@ fun ProductoDetalleScreen(
                         contentScale = ContentScale.Crop
                     )
                 } else {
-                    // Emoji grande como placeholder
                     Text(
                         text = when {
                             producto.nombre.contains("café", true) -> "☕"
                             producto.nombre.contains("jugo", true) -> "🥤"
                             producto.nombre.contains("hot", true)  -> "🥞"
-                            producto.nombre.contains("pollo", true) || producto.nombre.contains("pechuga", true) -> "🍗"
+                            producto.nombre.contains("pollo", true) ||
+                                    producto.nombre.contains("pechuga", true) -> "🍗"
                             producto.nombre.contains("pasta", true) -> "🍝"
                             producto.nombre.contains("hambur", true) -> "🍔"
                             producto.nombre.contains("chilaquil", true) -> "🍳"
@@ -252,7 +250,6 @@ fun ProductoDetalleScreen(
                     )
                 }
 
-                // Badge de no disponible
                 if (!producto.disponible) {
                     Box(
                         modifier = Modifier
@@ -267,12 +264,10 @@ fun ProductoDetalleScreen(
                 }
             }
 
-            // Contenido principal
             Column(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Nombre y precio
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -304,7 +299,6 @@ fun ProductoDetalleScreen(
                             )
                         }
 
-                        // Categoría badge
                         producto.categoria?.let { cat ->
                             Box(
                                 modifier = Modifier
@@ -323,7 +317,6 @@ fun ProductoDetalleScreen(
                     }
                 }
 
-                // Descripción
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -350,7 +343,6 @@ fun ProductoDetalleScreen(
                     }
                 }
 
-                // Aviso si no está disponible
                 if (!producto.disponible) {
                     Box(
                         modifier = Modifier
