@@ -16,9 +16,23 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    // ⚠️ Cambia esta IP por la de tu máquina en la misma red que el emulador/dispositivo
-    // Si usas emulador Android: 10.0.2.2
-    // Si usas dispositivo físico: IP local de tu computadora, ej: 192.168.1.100
+    /**
+     * ─────────────────────────────────────────────────────────────────────────
+     * CONFIGURACIÓN DE LA URL BASE DE LA API
+     * ─────────────────────────────────────────────────────────────────────────
+     *
+     * Elige la opción que corresponde a tu entorno:
+     *
+     * EMULADOR ANDROID → usa 10.0.2.2 (mapea al localhost de tu PC)
+     *   BASE_URL = "http://10.0.2.2:8080/"
+     *
+     * DISPOSITIVO FÍSICO EN LA MISMA RED Wi-Fi → usa la IP local de tu PC
+     *   Encuentra tu IP: Windows → ipconfig | Mac/Linux → ip addr o ifconfig
+     *   Ejemplo: BASE_URL = "http://192.168.1.100:8080/"
+     *
+     * La API debe estar corriendo en el puerto 8080 (Spring Boot por defecto).
+     * Verifica que el servidor responda antes de probar la app.
+     */
     private const val BASE_URL = "http://10.0.2.2:8080/"
 
     @Provides
@@ -29,8 +43,17 @@ object NetworkModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(logging)
+            // Headers comunes para todas las peticiones
+            .addInterceptor { chain ->
+                val request = chain.request().newBuilder()
+                    .addHeader("Content-Type", "application/json")
+                    .addHeader("Accept", "application/json")
+                    .build()
+                chain.proceed(request)
+            }
             .connectTimeout(30, TimeUnit.SECONDS)
             .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
             .build()
     }
 

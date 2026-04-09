@@ -1,13 +1,13 @@
 package com.example.viagourmet.data.model.request
 
 import com.google.gson.annotations.SerializedName
+import java.math.BigDecimal
 
-data class CrearPedidoLibreRequest(
-    @SerializedName("id_cliente")      val idCliente: Int?,
-    @SerializedName("notas")           val notas: String,
-    @SerializedName("modulo")          val modulo: String,
-    @SerializedName("tipo")            val tipo: String,
-    @SerializedName("minutos_entrega") val minutosEntrega: Int,
-    @SerializedName("metodo_pago")     val metodoPago: String,
-    @SerializedName("id_empleado")     val idEmpleado: Int = 1  // empleado default para pedidos de cliente
+data class CrearPedidoLibreItemRequest(
+    @SerializedName("id_pedido")      val idPedido: Int,
+    @SerializedName("descripcion")    val descripcion: String,
+    @SerializedName("precio_manual")  val precioManual: BigDecimal,
+    @SerializedName("cantidad")       val cantidad: Int = 1,
+    @SerializedName("id_admin")       val idAdmin: Int,
+    @SerializedName("notas")          val notas: String? = null
 )

@@ -1,108 +1,76 @@
 package com.example.viagourmet.data.repository
 
-import com.example.viagourmet.data.mock.MockData
+import com.example.viagourmet.data.api.CafeteriaApiService
 import com.example.viagourmet.domain.model.Categoria
-import com.example.viagourmet.domain.model.ModuloCategoria
+import com.example.viagourmet.domain.model.ModuloPedido
 import com.example.viagourmet.domain.model.Producto
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import java.math.BigDecimal
 import javax.inject.Inject
 import javax.inject.Singleton
 
+/**
+ * MenuRepositoryImpl — obtiene categorías y productos desde la API.
+ *
+ * El MenuViewModel actualmente usa MockData. Con este repositorio
+ * se puede migrar a datos reales del servidor en una sola línea de cambio.
+ *
+ * Mapeo de módulo app → API:
+ *   DESAYUNOS  →  "desayunos"
+ *   COMIDAS    →  "comidas"
+ *   LIBRE      →  "libre"
+ */
 @Singleton
-class MenuRepository @Inject constructor() {
-
-    // ── Estado reactivo del menú ─────────────────────────────────────────────
-    private val _productos = MutableStateFlow(MockData.productos.toMutableList().map { it.copy() })
-    val productos: StateFlow<List<Producto>> = _productos.asStateFlow()
-
-    private val _categorias = MutableStateFlow(MockData.categorias.toMutableList().map { it.copy() })
-    val categorias: StateFlow<List<Categoria>> = _categorias.asStateFlow()
-
-    // ── Operaciones CRUD de productos ────────────────────────────────────────
-
-    fun agregarProducto(
-        nombre: String,
-        descripcion: String,
-        precio: BigDecimal,
-        categoriaId: Int,
-        imagenUrl: String? = null
-    ): Producto {
-        val nuevaId = (_productos.value.maxOfOrNull { it.id } ?: 0) + 1
-        val categoria = _categorias.value.find { it.id == categoriaId }
-        val nuevo = Producto(
-            id          = nuevaId,
-            categoriaId = categoriaId,
-            nombre      = nombre.trim(),
-            descripcion = descripcion.trim(),
-            precio      = precio,
-            disponible  = true,
-            imagenUrl   = imagenUrl,
-            categoria   = categoria
-        )
-        _productos.value = _productos.value + nuevo
-        return nuevo
-    }
-
-    fun editarProducto(
-        productoId: Int,
-        nombre: String,
-        descripcion: String,
-        precio: BigDecimal,
-        categoriaId: Int,
-        disponible: Boolean,
-        imagenUrl: String? = null
-    ): Boolean {
-        val categoria = _categorias.value.find { it.id == categoriaId }
-        val actualizado = _productos.value.map { p ->
-            if (p.id == productoId) p.copy(
-                nombre      = nombre.trim(),
-                descripcion = descripcion.trim(),
-                precio      = precio,
-                categoriaId = categoriaId,
-                disponible  = disponible,
-                imagenUrl   = imagenUrl ?: p.imagenUrl,
-                categoria   = categoria
-            ) else p
+class MenuRepositoryImpl @Inject constructor(
+    private val api: CafeteriaApiService
+) {
+    /** Obtiene las categorías activas del módulo especificado. */
+    suspend fun obtenerCategoriasPorModulo(modulo: ModuloPedido): List<Categoria> {
+        return try {
+            val moduloStr = when (modulo) {
+                ModuloPedido.DESAYUNOS -> "desayunos"
+                ModuloPedido.COMIDAS   -> "comidas"
+                ModuloPedido.LIBRE     -> "libre"
+            }
+            val resp = api.listarCategoriasPorModulo(moduloStr)
+            if (!resp.isSuccessful) return emptyList()
+            resp.body()?.data?.map { it.toDomain() } ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
         }
-        return if (actualizado != _productos.value) {
-            _productos.value = actualizado
-            true
-        } else false
     }
 
-    fun toggleDisponibilidad(productoId: Int): Boolean {
-        var cambiado = false
-        _productos.value = _productos.value.map { p ->
-            if (p.id == productoId) {
-                cambiado = true
-                p.copy(disponible = !p.disponible)
-            } else p
+    /** Obtiene los productos disponibles del módulo especificado. */
+    suspend fun obtenerProductosPorModulo(modulo: ModuloPedido): List<Producto> {
+        return try {
+            // Obtener las categorías del módulo primero
+            val categorias = obtenerCategoriasPorModulo(modulo)
+            if (categorias.isEmpty()) return emptyList()
+
+            // Traer todos los productos disponibles y filtrar por categoría del módulo
+            val resp = api.listarProductos(disponible = true)
+            if (!resp.isSuccessful) return emptyList()
+
+            val idsCategorias = categorias.map { it.id }.toSet()
+            resp.body()?.data
+                ?.filter { it.categoriaId in idsCategorias }
+                ?.map { dto ->
+                    // Inyectar la categoría en el producto
+                    val categoria = categorias.find { it.id == dto.categoriaId }
+                    dto.toDomain().copy(categoria = categoria)
+                }
+                ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
         }
-        return cambiado
     }
 
-    fun eliminarProducto(productoId: Int): Boolean {
-        val antes = _productos.value.size
-        _productos.value = _productos.value.filter { it.id != productoId }
-        return _productos.value.size < antes
-    }
-
-    // ── Queries de utilidad ──────────────────────────────────────────────────
-
-    fun getProductoById(id: Int): Producto? = _productos.value.find { it.id == id }
-
-    fun getProductosPorModulo(modulo: com.example.viagourmet.domain.model.ModuloPedido): List<Producto> {
-        val moduloCat = when (modulo) {
-            com.example.viagourmet.domain.model.ModuloPedido.DESAYUNOS -> ModuloCategoria.DESAYUNOS
-            com.example.viagourmet.domain.model.ModuloPedido.COMIDAS   -> ModuloCategoria.COMIDAS
-            com.example.viagourmet.domain.model.ModuloPedido.LIBRE     -> null
+    /** Obtiene todos los productos de una categoría específica. */
+    suspend fun obtenerProductosPorCategoria(categoriaId: Int): List<Producto> {
+        return try {
+            val resp = api.listarProductosPorCategoria(categoriaId)
+            if (!resp.isSuccessful) return emptyList()
+            resp.body()?.data?.map { it.toDomain() } ?: emptyList()
+        } catch (e: Exception) {
+            emptyList()
         }
-        return if (moduloCat == null) _productos.value
-        else _productos.value.filter { it.categoria?.modulo == moduloCat && it.disponible }
     }
-
-    fun getCategoriasActivas(): List<Categoria> = _categorias.value.filter { it.activo }
 }
