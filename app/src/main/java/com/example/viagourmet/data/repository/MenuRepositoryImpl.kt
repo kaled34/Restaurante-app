@@ -4,6 +4,8 @@ import com.example.viagourmet.data.api.CafeteriaApiService
 import com.example.viagourmet.data.mock.MockData
 import com.example.viagourmet.data.model.request.ProductoRequest
 import com.example.viagourmet.domain.model.Categoria
+import com.example.viagourmet.domain.model.ModuloPedido
+import com.example.viagourmet.domain.model.ModuloCategoria
 import com.example.viagourmet.domain.model.Producto
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,12 +19,13 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * MenuRepository — gestiona productos y categorías del menú.
+ * MenuRepositoryImpl — gestiona productos y categorías del menú.
  *
  * Se conecta a la API remota para todas las operaciones CRUD.
  * Si no hay conexión, usa MockData como fallback.
  *
  * Usado por:
+ *  - MenuViewModel: obtener categorías y productos por módulo
  *  - EditarMenuViewModel: CRUD de productos (pantalla admin)
  *  - ProductoDetalleViewModel: búsqueda de producto por id
  */
@@ -86,6 +89,87 @@ class MenuRepositoryImpl @Inject constructor(
 
     fun getProductosPorCategoria(categoriaId: Int): List<Producto> =
         _productos.value.filter { it.categoriaId == categoriaId && it.disponible }
+
+    // ── Métodos requeridos por MenuViewModel ──────────────────────────────────
+
+    /**
+     * Devuelve las categorías activas que pertenecen al módulo indicado.
+     * Hace una llamada a la API; si falla, filtra del estado local.
+     */
+    suspend fun obtenerCategoriasPorModulo(modulo: ModuloPedido): List<Categoria> {
+        return try {
+            val moduloStr = modulo.toApiString()
+            val resp = api.listarCategoriasPorModulo(moduloStr)
+            if (resp.isSuccessful && resp.body()?.data != null) {
+                val resultado = resp.body()!!.data!!.map { it.toDomain() }
+                // Actualizar caché local con las categorías obtenidas
+                val idsObtenidos = resultado.map { it.id }.toSet()
+                val restantes = _categorias.value.filter { it.id !in idsObtenidos }
+                _categorias.value = restantes + resultado
+                resultado.filter { it.activo }
+            } else {
+                // Fallback: filtrar del estado local por módulo
+                filtrarCategoriasPorModulo(modulo)
+            }
+        } catch (e: Exception) {
+            filtrarCategoriasPorModulo(modulo)
+        }
+    }
+
+    /**
+     * Devuelve los productos disponibles del módulo indicado.
+     * Hace una llamada a la API; si falla, filtra del estado local.
+     */
+    suspend fun obtenerProductosPorModulo(modulo: ModuloPedido): List<Producto> {
+        return try {
+            val moduloStr = modulo.toApiString()
+            val resp = api.listarProductos(disponible = true)
+            if (resp.isSuccessful && resp.body()?.data != null) {
+                val cats = _categorias.value
+                val todosProductos = resp.body()!!.data!!.map { dto ->
+                    val cat = cats.find { it.id == dto.categoriaId }
+                    dto.toDomain().copy(categoria = cat)
+                }
+                // Actualizar caché local
+                _productos.value = todosProductos
+                // Filtrar por módulo
+                filtrarProductosPorModulo(modulo, todosProductos)
+            } else {
+                filtrarProductosPorModulo(modulo, _productos.value)
+            }
+        } catch (e: Exception) {
+            filtrarProductosPorModulo(modulo, _productos.value)
+        }
+    }
+
+    // ── Helpers de filtrado local ─────────────────────────────────────────────
+
+    private fun filtrarCategoriasPorModulo(modulo: ModuloPedido): List<Categoria> {
+        val moduloCategoria = modulo.toModuloCategoria()
+        return _categorias.value.filter { cat ->
+            cat.activo && (moduloCategoria == null || cat.modulo == moduloCategoria)
+        }
+    }
+
+    private fun filtrarProductosPorModulo(modulo: ModuloPedido, lista: List<Producto>): List<Producto> {
+        val moduloCategoria = modulo.toModuloCategoria()
+        return lista.filter { producto ->
+            producto.disponible &&
+                    (moduloCategoria == null || producto.categoria?.modulo == moduloCategoria)
+        }
+    }
+
+    private fun ModuloPedido.toModuloCategoria(): ModuloCategoria? = when (this) {
+        ModuloPedido.DESAYUNOS -> ModuloCategoria.DESAYUNOS
+        ModuloPedido.COMIDAS   -> ModuloCategoria.COMIDAS
+        ModuloPedido.LIBRE     -> null
+    }
+
+    private fun ModuloPedido.toApiString(): String = when (this) {
+        ModuloPedido.DESAYUNOS -> "desayunos"
+        ModuloPedido.COMIDAS   -> "comidas"
+        ModuloPedido.LIBRE     -> "libre"
+    }
 
     // ── Búsqueda directa en la API ────────────────────────────────────────────
 
@@ -197,7 +281,6 @@ class MenuRepositoryImpl @Inject constructor(
     }
 
     // ── Métodos síncronos legacy (usan scope interno) ─────────────────────────
-    // Mantienen compatibilidad si alguna parte del código los llama directamente.
 
     fun agregarProducto(
         nombre: String,
@@ -210,7 +293,6 @@ class MenuRepositoryImpl @Inject constructor(
             try {
                 agregarProductoApi(nombre, descripcion, precio, categoriaId, imagenUrl)
             } catch (e: Exception) {
-                // Fallback local
                 val nuevoId = (_productos.value.maxOfOrNull { it.id } ?: 0) + 1
                 val categoria = _categorias.value.find { it.id == categoriaId }
                 _productos.value = _productos.value + Producto(
