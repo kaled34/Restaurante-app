@@ -22,9 +22,16 @@ object AppModule {
         api: CafeteriaApiService
     ): PedidoRepository = PedidoRepositoryImpl(dao, api)
 
+    /**
+     * MenuRepositoryImpl — para MenuViewModel (pantalla de menú del cliente).
+     * Conecta directamente con la API para obtener categorías y productos.
+     */
     @Provides
     @Singleton
-    fun provideMenuRepository(
+    fun provideMenuRepositoryImpl(
         api: CafeteriaApiService
     ): MenuRepositoryImpl = MenuRepositoryImpl(api)
+
+    // MenuRepository (para EditarMenuViewModel y ProductoDetalleViewModel)
+    // tiene @Inject constructor(api) por lo que Hilt lo inyecta automáticamente.
 }

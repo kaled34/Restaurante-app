@@ -1,14 +1,17 @@
 package com.example.viagourmet.Presentacion.screens.admin
 
 import androidx.lifecycle.ViewModel
-import com.example.viagourmet.data.repository.MenuRepository
+import androidx.lifecycle.viewModelScope
+import com.example.viagourmet.data.repository.MenuRepositoryImpl
 import com.example.viagourmet.domain.model.Categoria
 import com.example.viagourmet.domain.model.Producto
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import java.math.BigDecimal
 import javax.inject.Inject
 
@@ -17,11 +20,12 @@ import javax.inject.Inject
 data class EditarMenuUiState(
     val productos: List<Producto> = emptyList(),
     val categorias: List<Categoria> = emptyList(),
-    val filtroCategoria: Int? = null,           // null = todos
+    val filtroCategoria: Int? = null,
     val filtroBusqueda: String = "",
     val productoSeleccionado: Producto? = null,
     val showFormulario: Boolean = false,
-    val isEditing: Boolean = false,             // true = editar, false = agregar
+    val isEditing: Boolean = false,
+    val isLoading: Boolean = false,
     val mensajeExito: String? = null,
     val errorMessage: String? = null
 ) {
@@ -54,135 +58,187 @@ data class FormularioProducto(
 }
 
 sealed class EditarMenuEvent {
-    // Filtros
     data class FiltrarCategoria(val categoriaId: Int?) : EditarMenuEvent()
     data class BuscarProducto(val query: String) : EditarMenuEvent()
-
-    // CRUD
     object AbrirNuevoProducto : EditarMenuEvent()
     data class AbrirEditarProducto(val producto: Producto) : EditarMenuEvent()
     object CerrarFormulario : EditarMenuEvent()
     data class GuardarProducto(val form: FormularioProducto) : EditarMenuEvent()
     data class ToggleDisponibilidad(val productoId: Int) : EditarMenuEvent()
     data class EliminarProducto(val productoId: Int) : EditarMenuEvent()
-
-    // Limpiar mensajes
     object LimpiarMensaje : EditarMenuEvent()
+    object Recargar : EditarMenuEvent()
 }
 
 // ── ViewModel ────────────────────────────────────────────────────────────────
 
 @HiltViewModel
 class EditarMenuViewModel @Inject constructor(
-    private val menuRepository: MenuRepository
+    private val menuRepositoryImpl: MenuRepositoryImpl
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(EditarMenuUiState())
+    private val _uiState = MutableStateFlow(EditarMenuUiState(isLoading = true))
     val uiState: StateFlow<EditarMenuUiState> = _uiState.asStateFlow()
 
     init {
-        // Observar el repositorio reactivo
-        _uiState.value = _uiState.value.copy(
-            productos  = menuRepository.productos.value,
-            categorias = menuRepository.getCategoriasActivas()
-        )
-        // Mantener sincronía cuando el Flow del repo emita
-        menuRepository.productos.let { flow ->
-            _uiState.value = _uiState.value.copy(productos = flow.value)
-        }
-        refrescarProductos()
+        // Observar el Flow de productos del repositorio
+        menuRepositoryImpl.productos
+            .onEach { productos ->
+                _uiState.value = _uiState.value.copy(
+                    productos = productos,
+                    categorias = menuRepositoryImpl.getCategoriasActivas(),
+                    isLoading = false
+                )
+            }
+            .launchIn(viewModelScope)
     }
 
     fun onEvent(event: EditarMenuEvent) {
         when (event) {
-            is EditarMenuEvent.FiltrarCategoria   -> _uiState.value = _uiState.value.copy(filtroCategoria = event.categoriaId)
-            is EditarMenuEvent.BuscarProducto     -> _uiState.value = _uiState.value.copy(filtroBusqueda = event.query)
-            is EditarMenuEvent.AbrirNuevoProducto -> _uiState.value = _uiState.value.copy(
-                showFormulario = true,
-                isEditing = false,
-                productoSeleccionado = null
-            )
-            is EditarMenuEvent.AbrirEditarProducto -> _uiState.value = _uiState.value.copy(
-                showFormulario = true,
-                isEditing = true,
-                productoSeleccionado = event.producto
-            )
-            is EditarMenuEvent.CerrarFormulario   -> _uiState.value = _uiState.value.copy(
-                showFormulario = false,
-                productoSeleccionado = null
-            )
-            is EditarMenuEvent.GuardarProducto    -> guardarProducto(event.form)
+            is EditarMenuEvent.FiltrarCategoria ->
+                _uiState.value = _uiState.value.copy(filtroCategoria = event.categoriaId)
+
+            is EditarMenuEvent.BuscarProducto ->
+                _uiState.value = _uiState.value.copy(filtroBusqueda = event.query)
+
+            is EditarMenuEvent.AbrirNuevoProducto ->
+                _uiState.value = _uiState.value.copy(
+                    showFormulario = true,
+                    isEditing = false,
+                    productoSeleccionado = null
+                )
+
+            is EditarMenuEvent.AbrirEditarProducto ->
+                _uiState.value = _uiState.value.copy(
+                    showFormulario = true,
+                    isEditing = true,
+                    productoSeleccionado = event.producto
+                )
+
+            is EditarMenuEvent.CerrarFormulario ->
+                _uiState.value = _uiState.value.copy(
+                    showFormulario = false,
+                    productoSeleccionado = null,
+                    errorMessage = null
+                )
+
+            is EditarMenuEvent.GuardarProducto -> guardarProducto(event.form)
+
             is EditarMenuEvent.ToggleDisponibilidad -> toggleDisponibilidad(event.productoId)
-            is EditarMenuEvent.EliminarProducto   -> eliminarProducto(event.productoId)
-            is EditarMenuEvent.LimpiarMensaje     -> _uiState.value = _uiState.value.copy(
-                mensajeExito = null,
-                errorMessage = null
-            )
+
+            is EditarMenuEvent.EliminarProducto -> eliminarProducto(event.productoId)
+
+            is EditarMenuEvent.LimpiarMensaje ->
+                _uiState.value = _uiState.value.copy(
+                    mensajeExito = null,
+                    errorMessage = null
+                )
+
+            is EditarMenuEvent.Recargar -> recargar()
         }
     }
 
     private fun guardarProducto(form: FormularioProducto) {
         if (!form.formularioValido) {
-            _uiState.value = _uiState.value.copy(errorMessage = "Completa todos los campos correctamente")
+            _uiState.value = _uiState.value.copy(
+                errorMessage = "Completa todos los campos correctamente"
+            )
             return
         }
-        val precio = form.precioTexto.toBigDecimalOrNull() ?: BigDecimal.ZERO
-        val state  = _uiState.value
 
-        if (state.isEditing && state.productoSeleccionado != null) {
-            val exito = menuRepository.editarProducto(
-                productoId  = state.productoSeleccionado.id,
-                nombre      = form.nombre,
-                descripcion = form.descripcion,
-                precio      = precio,
-                categoriaId = form.categoriaId,
-                disponible  = form.disponible,
-                imagenUrl   = form.imagenUrl.ifBlank { null }
-            )
-            if (exito) {
-                refrescarProductos()
+        val precio = form.precioTexto.toBigDecimalOrNull() ?: BigDecimal.ZERO
+        val state = _uiState.value
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, errorMessage = null)
+            try {
+                if (state.isEditing && state.productoSeleccionado != null) {
+                    // Editar producto existente
+                    val exito = menuRepositoryImpl.editarProductoApi(
+                        productoId  = state.productoSeleccionado.id,
+                        nombre      = form.nombre,
+                        descripcion = form.descripcion,
+                        precio      = precio,
+                        categoriaId = form.categoriaId,
+                        disponible  = form.disponible,
+                        imagenUrl   = form.imagenUrl.ifBlank { null }
+                    )
+                    if (exito) {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            showFormulario = false,
+                            productoSeleccionado = null,
+                            mensajeExito = "✅ Producto actualizado"
+                        )
+                    } else {
+                        _uiState.value = _uiState.value.copy(
+                            isLoading = false,
+                            errorMessage = "No se pudo actualizar el producto"
+                        )
+                    }
+                } else {
+                    // Crear nuevo producto
+                    menuRepositoryImpl.agregarProductoApi(
+                        nombre      = form.nombre,
+                        descripcion = form.descripcion,
+                        precio      = precio,
+                        categoriaId = form.categoriaId,
+                        imagenUrl   = form.imagenUrl.ifBlank { null }
+                    )
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        showFormulario = false,
+                        mensajeExito = "✅ Producto agregado al menú"
+                    )
+                }
+            } catch (e: Exception) {
                 _uiState.value = _uiState.value.copy(
-                    showFormulario = false,
-                    productoSeleccionado = null,
-                    mensajeExito = "✅ Producto actualizado"
+                    isLoading = false,
+                    errorMessage = "Error: ${e.message}"
                 )
-            } else {
-                _uiState.value = _uiState.value.copy(errorMessage = "No se pudo actualizar el producto")
             }
-        } else {
-            menuRepository.agregarProducto(
-                nombre      = form.nombre,
-                descripcion = form.descripcion,
-                precio      = precio,
-                categoriaId = form.categoriaId,
-                imagenUrl   = form.imagenUrl.ifBlank { null }
-            )
-            refrescarProductos()
-            _uiState.value = _uiState.value.copy(
-                showFormulario = false,
-                mensajeExito = "✅ Producto agregado al menú"
-            )
         }
     }
 
     private fun toggleDisponibilidad(productoId: Int) {
-        menuRepository.toggleDisponibilidad(productoId)
-        refrescarProductos()
-        val producto = menuRepository.getProductoById(productoId)
-        val estado   = if (producto?.disponible == true) "activado" else "desactivado"
-        _uiState.value = _uiState.value.copy(mensajeExito = "Producto $estado")
+        viewModelScope.launch {
+            try {
+                menuRepositoryImpl.toggleDisponibilidadApi(productoId)
+                val producto = menuRepositoryImpl.getProductoById(productoId)
+                val estado = if (producto?.disponible == true) "activado" else "desactivado"
+                _uiState.value = _uiState.value.copy(mensajeExito = "Producto $estado")
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Error al cambiar disponibilidad: ${e.message}"
+                )
+            }
+        }
     }
 
     private fun eliminarProducto(productoId: Int) {
-        menuRepository.eliminarProducto(productoId)
-        refrescarProductos()
-        _uiState.value = _uiState.value.copy(mensajeExito = "🗑 Producto eliminado")
+        viewModelScope.launch {
+            try {
+                menuRepositoryImpl.eliminarProductoApi(productoId)
+                _uiState.value = _uiState.value.copy(mensajeExito = "🗑 Producto eliminado")
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    errorMessage = "Error al eliminar: ${e.message}"
+                )
+            }
+        }
     }
 
-    private fun refrescarProductos() {
-        _uiState.value = _uiState.value.copy(
-            productos  = menuRepository.productos.value,
-            categorias = menuRepository.getCategoriasActivas()
-        )
+    private fun recargar() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            try {
+                menuRepositoryImpl.recargar()
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = "Error al recargar: ${e.message}"
+                )
+            }
+        }
     }
 }

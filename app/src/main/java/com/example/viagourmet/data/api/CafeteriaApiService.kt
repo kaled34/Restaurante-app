@@ -9,12 +9,6 @@ import retrofit2.http.*
 
 interface CafeteriaApiService {
 
-    // ── Autenticación (empleados) ─────────────────────────────────────────────
-    // El login de empleados se resuelve con el endpoint de empleados:
-    // buscar por email y verificar contraseña en el repositorio local (Room).
-    // La API no tiene endpoint /login, por lo que se usa Room para empleados
-    // y el endpoint de clientes para registro/login de clientes.
-
     // ── Clientes ─────────────────────────────────────────────────────────────
     @GET("api/v1/clientes/email/{email}")
     suspend fun buscarClientePorEmail(
@@ -71,6 +65,28 @@ interface CafeteriaApiService {
     suspend fun listarProductosPorCategoria(
         @Path("idCategoria") idCategoria: Int
     ): Response<ApiResponse<List<ProductoDto>>>
+
+    @POST("api/v1/productos")
+    suspend fun crearProducto(
+        @Body request: ProductoRequest
+    ): Response<ApiResponse<ProductoDto>>
+
+    @PUT("api/v1/productos/{id}")
+    suspend fun actualizarProducto(
+        @Path("id") id: Int,
+        @Body request: ProductoRequest
+    ): Response<ApiResponse<ProductoDto>>
+
+    @PATCH("api/v1/productos/{id}/disponibilidad")
+    suspend fun cambiarDisponibilidadProducto(
+        @Path("id") id: Int,
+        @Query("disponible") disponible: Boolean
+    ): Response<ApiResponse<ProductoDto>>
+
+    @DELETE("api/v1/productos/{id}")
+    suspend fun eliminarProducto(
+        @Path("id") id: Int
+    ): Response<ApiResponse<Void>>
 
     // ── Pedidos ───────────────────────────────────────────────────────────────
     @GET("api/v1/pedidos")
