@@ -1,11 +1,11 @@
 package com.example.viagourmet.data.repository
 
-import com.example.viagourmet.data.entity.PedidoEntity
+import com.example.viagourmet.data.api.CafeteriaApiService
 import com.example.viagourmet.data.dao.PedidoDao
-
+import com.example.viagourmet.data.entity.PedidoEntity
 import com.example.viagourmet.data.local.mapper.toDetallePedidoEntity
 import com.example.viagourmet.data.local.mapper.toDomain
-import com.example.viagourmet.data.local.mapper.toEntity
+import com.example.viagourmet.data.model.request.CrearPedidoRequest
 import com.example.viagourmet.domain.model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,9 +17,9 @@ import javax.inject.Singleton
 
 @Singleton
 class PedidoRepositoryLocal @Inject constructor(
-    private val dao: PedidoDao
+    private val dao: PedidoDao,
+    private val api: CafeteriaApiService
 ) {
-
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     // ── Carrito en memoria ───────────────────────────────────────────────────
@@ -27,19 +27,15 @@ class PedidoRepositoryLocal @Inject constructor(
     val carrito: StateFlow<List<ItemCarrito>> = _carrito.asStateFlow()
 
     // ── Flow de pedidos desde Room ───────────────────────────────────────────
-    private val _pedidosFromDb: Flow<List<Pedido>> =
-        dao.getAllPedidosFlow()
-            .map { lista -> lista.map { it.toDomain() } }
-            .flowOn(Dispatchers.IO)
-
     private val _pedidos = MutableStateFlow<List<Pedido>>(emptyList())
     val pedidos: StateFlow<List<Pedido>> = _pedidos.asStateFlow()
 
     init {
         scope.launch {
-            _pedidosFromDb.collect { lista ->
-                _pedidos.value = lista
-            }
+            dao.getAllPedidosFlow()
+                .map { lista -> lista.map { it.toDomain() } }
+                .flowOn(Dispatchers.IO)
+                .collect { _pedidos.value = it }
         }
     }
 
@@ -80,15 +76,16 @@ class PedidoRepositoryLocal @Inject constructor(
         _carrito.value = emptyList()
     }
 
-    // ── Crear pedido ─────────────────────────────────────────────────────────
+    // ── Crear pedido — envía a la API y guarda en Room ───────────────────────
 
     /**
-     * @param empleadoId  Id del usuario que confirma el pedido (empleado o cliente).
-     * @param clienteId   Id del cliente dueño del pedido.
-     *                    Si el cliente hace su propio pedido, clienteId == empleadoId.
-     *                    Si el empleado crea el pedido, clienteId debe ser el id del
-     *                    cliente al que se le asigna (o 0 si no aplica).
-     * @param clienteNombre Nombre que se mostrará en el panel admin.
+     * Crea el pedido en la API remota.
+     * Si la API responde OK, guarda el pedido en Room para acceso offline.
+     * Si la API falla (sin red), guarda solo en Room como fallback.
+     *
+     * @param empleadoId  Id del usuario que confirma (cliente o empleado)
+     * @param clienteId   Id del cliente dueño del pedido
+     * @param clienteNombre Nombre para mostrar en el panel admin
      */
     suspend fun crearPedido(
         empleadoId: Int,
@@ -97,40 +94,66 @@ class PedidoRepositoryLocal @Inject constructor(
         horario: String?,
         notas: String?
     ): Pedido {
-        val itemsActuales = _carrito.value
+        val items = _carrito.value
         val ahora = nowString()
 
         val notasFinal = buildString {
-            if (!horario.isNullOrBlank()) append("🕐 Recogida: $horario")
+            if (!horario.isNullOrBlank()) append("Recogida: $horario")
             if (!notas.isNullOrBlank()) {
                 if (isNotBlank()) append(" | ")
                 append(notas)
             }
         }.ifBlank { null }
 
-        val entity = PedidoEntity(
-            empleadoId = empleadoId,
-            clienteId = clienteId,
-            clienteNombre = clienteNombre,
-            clienteApellido = null,
-            clienteTelefono = null,
-            clienteEmail = null,
-            modulo = detectarModulo(itemsActuales).name,
-            estado = EstadoPedido.PENDIENTE.name,
-            tipo = TipoPedido.PARA_LLEVAR.name,
-            horarioRecogidaId = null,
-            notas = notasFinal,
-            creadoEn = ahora,
-            actualizadoEn = ahora
-        )
-        val pedidoId = dao.insertPedido(entity).toInt()
+        val modulo = detectarModulo(items)
 
-        val detalles = itemsActuales.map { it.toDetallePedidoEntity(pedidoId) }
-        dao.insertDetalles(detalles)
+        // ── Intentar crear en la API ─────────────────────────────────────────
+        return try {
+            val detallesRequest = items.map { item ->
+                CrearPedidoRequest.DetallePedidoRequest(
+                    productoId = item.producto.id,
+                    cantidad   = item.cantidad,
+                    notas      = null
+                )
+            }
 
-        limpiarCarrito()
+            val request = CrearPedidoRequest.CrearPedidoRequest(
+                empleadoId       = DEFAULT_EMPLEADO_ID, // la API requiere un empleado válido
+                clienteId        = if (clienteId > 0) clienteId else null,
+                modulo           = modulo.toApiString(),
+                tipo             = TipoPedido.PARA_LLEVAR.toApiString(),
+                horarioRecogidaId = null,
+                notas            = notasFinal,
+                detalles         = detallesRequest
+            )
 
-        return dao.getPedidoById(pedidoId)!!.toDomain()
+            val resp = api.crearPedido(request)
+
+            if (resp.isSuccessful && resp.body()?.data != null) {
+                // API exitosa → guardar en Room con el id real del servidor
+                val pedidoApi = resp.body()!!.data!!
+                guardarEnRoom(
+                    id            = pedidoApi.id,
+                    empleadoId    = empleadoId,
+                    clienteId     = clienteId,
+                    clienteNombre = clienteNombre,
+                    modulo        = modulo,
+                    notasFinal    = notasFinal,
+                    ahora         = ahora,
+                    items         = items
+                )
+                limpiarCarrito()
+                dao.getPedidoById(pedidoApi.id)!!.toDomain()
+            } else {
+                // API respondió con error → fallback a Room local
+                crearEnRoomLocal(empleadoId, clienteId, clienteNombre,
+                    modulo, notasFinal, ahora, items)
+            }
+        } catch (e: Exception) {
+            // Sin red → guardar en Room local
+            crearEnRoomLocal(empleadoId, clienteId, clienteNombre,
+                modulo, notasFinal, ahora, items)
+        }
     }
 
     // ── Actualizar estado ────────────────────────────────────────────────────
@@ -140,7 +163,67 @@ class PedidoRepositoryLocal @Inject constructor(
         return filas > 0
     }
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
+    // ── Helpers privados ─────────────────────────────────────────────────────
+
+    private suspend fun crearEnRoomLocal(
+        empleadoId: Int,
+        clienteId: Int,
+        clienteNombre: String,
+        modulo: ModuloPedido,
+        notasFinal: String?,
+        ahora: String,
+        items: List<ItemCarrito>
+    ): Pedido {
+        val entity = PedidoEntity(
+            empleadoId     = empleadoId,
+            clienteId      = clienteId,
+            clienteNombre  = clienteNombre,
+            clienteApellido = null,
+            clienteTelefono = null,
+            clienteEmail   = null,
+            modulo         = modulo.name,
+            estado         = EstadoPedido.PENDIENTE.name,
+            tipo           = TipoPedido.PARA_LLEVAR.name,
+            horarioRecogidaId = null,
+            notas          = notasFinal,
+            creadoEn       = ahora,
+            actualizadoEn  = ahora
+        )
+        val pedidoId = dao.insertPedido(entity).toInt()
+        dao.insertDetalles(items.map { it.toDetallePedidoEntity(pedidoId) })
+        limpiarCarrito()
+        return dao.getPedidoById(pedidoId)!!.toDomain()
+    }
+
+    private suspend fun guardarEnRoom(
+        id: Int,
+        empleadoId: Int,
+        clienteId: Int,
+        clienteNombre: String,
+        modulo: ModuloPedido,
+        notasFinal: String?,
+        ahora: String,
+        items: List<ItemCarrito>
+    ) {
+        val entity = PedidoEntity(
+            id             = id,
+            empleadoId     = empleadoId,
+            clienteId      = clienteId,
+            clienteNombre  = clienteNombre,
+            clienteApellido = null,
+            clienteTelefono = null,
+            clienteEmail   = null,
+            modulo         = modulo.name,
+            estado         = EstadoPedido.PENDIENTE.name,
+            tipo           = TipoPedido.PARA_LLEVAR.name,
+            horarioRecogidaId = null,
+            notas          = notasFinal,
+            creadoEn       = ahora,
+            actualizadoEn  = ahora
+        )
+        dao.insertPedido(entity)
+        dao.insertDetalles(items.map { it.toDetallePedidoEntity(id) })
+    }
 
     private fun detectarModulo(items: List<ItemCarrito>): ModuloPedido {
         val categorias = items.mapNotNull { it.producto.categoria?.modulo }
@@ -149,6 +232,17 @@ class PedidoRepositoryLocal @Inject constructor(
             categorias.all { it == ModuloCategoria.COMIDAS }   -> ModuloPedido.COMIDAS
             else -> ModuloPedido.LIBRE
         }
+    }
+
+    private fun ModuloPedido.toApiString() = when (this) {
+        ModuloPedido.DESAYUNOS -> "desayunos"
+        ModuloPedido.COMIDAS   -> "comidas"
+        ModuloPedido.LIBRE     -> "libre"
+    }
+
+    private fun TipoPedido.toApiString() = when (this) {
+        TipoPedido.PARA_LLEVAR -> "para_llevar"
+        TipoPedido.OFICINA     -> "oficina"
     }
 
     private fun nowString(): String {
@@ -161,6 +255,10 @@ class PedidoRepositoryLocal @Inject constructor(
             c.get(java.util.Calendar.MINUTE),
             c.get(java.util.Calendar.SECOND)
         )
+    }
+
+    companion object {
+        const val DEFAULT_EMPLEADO_ID = 1
     }
 }
 

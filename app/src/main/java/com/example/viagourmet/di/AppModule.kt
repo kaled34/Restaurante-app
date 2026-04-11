@@ -5,6 +5,7 @@ import com.example.viagourmet.data.dao.PedidoDao
 import com.example.viagourmet.data.repository.MenuRepositoryImpl
 import com.example.viagourmet.data.repository.PedidoRepository
 import com.example.viagourmet.data.repository.PedidoRepositoryImpl
+import com.example.viagourmet.data.repository.PedidoRepositoryLocal
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -22,16 +23,16 @@ object AppModule {
         api: CafeteriaApiService
     ): PedidoRepository = PedidoRepositoryImpl(dao, api)
 
-    /**
-     * MenuRepositoryImpl — para MenuViewModel (pantalla de menú del cliente).
-     * Conecta directamente con la API para obtener categorías y productos.
-     */
     @Provides
     @Singleton
-    fun provideMenuRepositoryImpl(
+    fun providePedidoRepositoryLocal(
+        dao: PedidoDao,
+        api: CafeteriaApiService
+    ): PedidoRepositoryLocal = PedidoRepositoryLocal(dao, api)
+
+    @Provides
+    @Singleton
+    fun provideMenuRepository(
         api: CafeteriaApiService
     ): MenuRepositoryImpl = MenuRepositoryImpl(api)
-
-    // MenuRepository (para EditarMenuViewModel y ProductoDetalleViewModel)
-    // tiene @Inject constructor(api) por lo que Hilt lo inyecta automáticamente.
 }
