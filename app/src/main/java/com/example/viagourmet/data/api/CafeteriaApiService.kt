@@ -40,6 +40,11 @@ interface CafeteriaApiService {
         @Path("id") id: Int
     ): Response<ApiResponse<EmpleadoDto>>
 
+    @POST("api/v1/empleados/login")
+    suspend fun loginEmpleado(
+        @Body request: LoginRequest.LoginRequest
+    ): Response<ApiResponse<LoginEmpleadoResponse>>
+
     // ── Categorías ────────────────────────────────────────────────────────────
     @GET("api/v1/categorias/activas")
     suspend fun listarCategoriasActivas(): Response<ApiResponse<List<CategoriaDto>>>

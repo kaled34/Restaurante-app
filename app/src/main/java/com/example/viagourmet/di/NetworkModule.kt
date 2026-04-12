@@ -33,7 +33,7 @@ object NetworkModule {
      * La API debe estar corriendo en el puerto 8080 (Spring Boot por defecto).
      * Verifica que el servidor responda antes de probar la app.
      */
-    private const val BASE_URL = "http://10.0.2.2:8080/"
+    private const val BASE_URL = "http://192.168.100.24:8080/"
 
     @Provides
     @Singleton
