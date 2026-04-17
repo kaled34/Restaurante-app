@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "594004676884",
+    "project_id": "viagourmet",
+    "storage_bucket": "viagourmet.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:594004676884:android:d94b3fad80fb5aeec93201",
+        "android_client_info": {
+          "package_name": "com.example.viagourmet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrJbtbkCpKq4lwvPrP-BXd_cXPImMt4Zg"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
