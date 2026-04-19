@@ -2,7 +2,6 @@ package com.example.viagourmet.data.api
 
 import com.example.viagourmet.data.model.*
 import com.example.viagourmet.data.model.Response.ApiResponse
-import com.example.viagourmet.data.model.Response.AuthResponse
 import com.example.viagourmet.data.model.request.*
 import retrofit2.Response
 import retrofit2.http.*
@@ -15,26 +14,19 @@ interface CafeteriaApiService {
         @Path("email") email: String
     ): Response<ApiResponse<ClienteDto>>
 
+    @POST("api/v1/clientes/login")
+    suspend fun loginCliente(
+        @Body request: LoginRequest.LoginRequest
+    ): Response<ApiResponse<ClienteDto>>
+
     @POST("api/v1/clientes")
     suspend fun crearCliente(
         @Body request: RegistroClienteRequest.RegistroClienteRequest
     ): Response<ApiResponse<ClienteDto>>
 
-    /** Login de cliente — la API valida BCrypt y devuelve los datos del cliente */
-    @POST("api/v1/clientes/login")
-    suspend fun loginCliente(
-        @Body request: LoginClienteRequest.LoginClienteRequest
-    ): Response<ApiResponse<LoginClienteResponse>>
-
     @GET("api/v1/clientes/{id}")
     suspend fun obtenerCliente(
         @Path("id") id: Int
-    ): Response<ApiResponse<ClienteDto>>
-
-    @PUT("api/v1/clientes/{id}")
-    suspend fun actualizarCliente(
-        @Path("id") id: Int,
-        @Body request: RegistroClienteRequest.RegistroClienteRequest
     ): Response<ApiResponse<ClienteDto>>
 
     // ── Empleados ─────────────────────────────────────────────────────────────
@@ -50,6 +42,12 @@ interface CafeteriaApiService {
     suspend fun loginEmpleado(
         @Body request: LoginRequest.LoginRequest
     ): Response<ApiResponse<LoginEmpleadoResponse>>
+
+    // NUEVO: Endpoint para registrar empleados
+    @POST("api/v1/empleados")
+    suspend fun crearEmpleado(
+        @Body request: RegistroEmpleadoRequest
+    ): Response<ApiResponse<EmpleadoDto>>
 
     // ── Categorías ────────────────────────────────────────────────────────────
     @GET("api/v1/categorias/activas")

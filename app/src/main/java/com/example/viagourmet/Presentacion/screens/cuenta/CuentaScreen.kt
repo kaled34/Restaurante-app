@@ -1,5 +1,6 @@
 package com.example.viagourmet.Presentacion.screens.cuenta
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -10,6 +11,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -18,10 +20,12 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.rememberAsyncImagePainter
 import com.example.viagourmet.Presentacion.components.CantidadSelector
 import com.example.viagourmet.data.repository.ItemCarrito
 
@@ -41,7 +45,8 @@ fun CuentaScreen(
     viewModel: CuentaViewModel = hiltViewModel(),
     onNavigateBack: () -> Unit,
     onSeguirComprando: () -> Unit,
-    onVerEstadoPedido: (Int) -> Unit
+    onVerEstadoPedido: (Int) -> Unit,
+    onNavigateToPerfil: () -> Unit // ACCIÓN PARA IR AL PERFIL
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -75,8 +80,8 @@ fun CuentaScreen(
                         contentAlignment = Alignment.Center
                     ) { Icon(Icons.Default.ArrowBack, null, tint = Color.White, modifier = Modifier.size(20.dp)) }
                     Column {
-                        Text("Mi pedido", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                        Text("${uiState.items.size} producto(s)", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
+                        Text("Resumen de Cuenta", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Gestiona tu pedido y perfil", fontSize = 11.sp, color = Color.White.copy(alpha = 0.7f))
                     }
                 }
             }
@@ -124,25 +129,52 @@ fun CuentaScreen(
             }
         }
     ) { paddingValues ->
-        if (uiState.items.isEmpty()) {
-            Box(modifier = Modifier.fillMaxSize().padding(paddingValues), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("🛒", fontSize = 56.sp)
-                    Text("Tu pedido está vacío", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextDark)
-                    Text("Agrega productos desde el menú", fontSize = 14.sp, color = TextLight)
-                    Spacer(Modifier.height(4.dp))
-                    Button(onClick = onSeguirComprando, shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Green)) {
-                        Text("Ver menú", color = Color.White, fontWeight = FontWeight.Bold)
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(paddingValues),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // SECCIÓN DE PERFIL (ACCESO RÁPIDO)
+            item {
+                val sesion = viewModel.sessionManager.obtenerSesion()
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable { onNavigateToPerfil() },
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = CardBg),
+                    elevation = CardDefaults.cardElevation(2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        // Miniatura de foto
+                        Box(
+                            modifier = Modifier.size(60.dp).clip(CircleShape).background(GreenPale),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            if (sesion?.fotoUri != null) {
+                                Image(
+                                    painter = rememberAsyncImagePainter(sesion.fotoUri),
+                                    contentDescription = null,
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentScale = ContentScale.Crop
+                                )
+                            } else {
+                                Icon(Icons.Default.Person, null, tint = Green, modifier = Modifier.size(30.dp))
+                            }
+                        }
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text("Hola, ${sesion?.nombre ?: "Usuario"}", fontSize = 18.sp, fontWeight = FontWeight.Bold, color = TextDark)
+                            Text("Ver mi perfil y datos", fontSize = 12.sp, color = TextLight)
+                        }
+                        Text("Ver →", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Green)
                     }
                 }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(paddingValues),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
+
+            // SECCIÓN DE HORARIOS (Solo si hay items o para configuración)
+            if (uiState.items.isNotEmpty()) {
                 item {
                     Text("¿Cuándo lo recoges?", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextDark)
                 }
@@ -181,15 +213,24 @@ fun CuentaScreen(
                         }
                     }
                 }
-                item { Spacer(Modifier.height(4.dp)) }
+            }
+
+            if (uiState.items.isEmpty()) {
                 item {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text("Productos (${uiState.items.size})", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextDark)
+                    Box(modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text("🛒", fontSize = 56.sp)
+                            Text("No tienes productos pendientes", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = TextDark)
+                            Button(onClick = onSeguirComprando, shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Green)) {
+                                Text("Explorar el menú", color = Color.White, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
+                }
+            } else {
+                item {
+                    Text("Productos (${uiState.items.size})", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = TextDark)
                 }
                 items(uiState.items, key = { it.id }) { item ->
                     CarritoItemCard(
@@ -198,8 +239,8 @@ fun CuentaScreen(
                         onCantidadChange = { viewModel.onEvent(CuentaEvent.ActualizarCantidad(item.id, it)) }
                     )
                 }
-                item { Spacer(Modifier.height(8.dp)) }
             }
+            item { Spacer(Modifier.height(8.dp)) }
         }
     }
 }
@@ -218,7 +259,6 @@ private fun CarritoItemCard(item: ItemCarrito, onEliminar: () -> Unit, onCantida
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Imagen placeholder
             Box(
                 modifier = Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(GreenPale),
                 contentAlignment = Alignment.Center

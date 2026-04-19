@@ -113,12 +113,13 @@ class PedidoRepositoryLocal @Inject constructor(
                 CrearPedidoRequest.DetallePedidoRequest(
                     productoId = item.producto.id,
                     cantidad   = item.cantidad,
+                    precioUnitario = item.producto.precio, // FALTABA ESTE PARÁMETRO
                     notas      = null
                 )
             }
 
             val request = CrearPedidoRequest.CrearPedidoRequest(
-                empleadoId       = DEFAULT_EMPLEADO_ID, // la API requiere un empleado válido
+                empleadoId       = if (empleadoId > 0) empleadoId else DEFAULT_EMPLEADO_ID,
                 clienteId        = if (clienteId > 0) clienteId else null,
                 modulo           = modulo.toApiString(),
                 tipo             = TipoPedido.PARA_LLEVAR.toApiString(),

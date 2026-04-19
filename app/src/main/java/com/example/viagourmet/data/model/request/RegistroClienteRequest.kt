@@ -16,6 +16,10 @@ class RegistroClienteRequest {
         @SerializedName("email")
         val email: String,
 
+        /**
+         * Contraseña en texto plano. El servidor la hashea con BCrypt antes de guardar.
+         * Es necesaria para que el cliente pueda hacer login posterior.
+         */
         @SerializedName("contrasena")
         val contrasena: String
     )

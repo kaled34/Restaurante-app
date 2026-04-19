@@ -4,7 +4,8 @@ import com.google.gson.annotations.SerializedName
 import java.math.BigDecimal
 
 data class ProductoRequest(
-    @SerializedName("id_categoria")
+    // Cambiado para coincidir EXACTAMENTE con lo que pide tu servidor en AWS según el error 400
+    @SerializedName("idCategoria")
     val idCategoria: Int,
 
     @SerializedName("nombre")
@@ -19,6 +20,6 @@ data class ProductoRequest(
     @SerializedName("disponible")
     val disponible: Boolean = true,
 
-    @SerializedName("imagen_url")
+    @SerializedName("imagenUrl")
     val imagenUrl: String? = null
 )

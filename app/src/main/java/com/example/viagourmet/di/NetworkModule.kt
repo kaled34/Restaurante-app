@@ -17,23 +17,9 @@ import javax.inject.Singleton
 object NetworkModule {
 
     /**
-     * ─────────────────────────────────────────────────────────────────────────
-     * CONFIGURACIÓN DE LA URL BASE DE LA API
-     * ─────────────────────────────────────────────────────────────────────────
-     *
-     * Elige la opción que corresponde a tu entorno:
-     *
-     * EMULADOR ANDROID → usa 10.0.2.2 (mapea al localhost de tu PC)
-     *   BASE_URL = "http://10.0.2.2:8080/"
-     *
-     * DISPOSITIVO FÍSICO EN LA MISMA RED Wi-Fi → usa la IP local de tu PC
-     *   Encuentra tu IP: Windows → ipconfig | Mac/Linux → ip addr o ifconfig
-     *   Ejemplo: BASE_URL = "http://192.168.1.100:8080/"
-     *
-     * La API debe estar corriendo en el puerto 8080 (Spring Boot por defecto). 10.17.0.59
-     * Verifica que el servidor responda antes de probar la app.  192.168.1.67 192.168.1.67  10.45.56.252
+     * URL de producción en AWS EC2
      */
-    private const val BASE_URL = "http://192.168.1.67:8080/"
+    private const val BASE_URL = "http://54.145.189.91:8080/"
 
     @Provides
     @Singleton
@@ -43,7 +29,6 @@ object NetworkModule {
         }
         return OkHttpClient.Builder()
             .addInterceptor(logging)
-            // Headers comunes para todas las peticiones
             .addInterceptor { chain ->
                 val request = chain.request().newBuilder()
                     .addHeader("Content-Type", "application/json")

@@ -1,14 +1,19 @@
 package com.example.viagourmet.data.repository
 
+import android.content.Context
+import android.util.Log
 import com.example.viagourmet.Presentacion.session.RolUsuario
 import com.example.viagourmet.Presentacion.session.UsuarioSesion
-import com.example.viagourmet.data.api.CafeteriaApiService
-import com.example.viagourmet.data.dao.UsuarioDao
 import com.example.viagourmet.data.Local.mapper.crearUsuarioEntity
 import com.example.viagourmet.data.Local.mapper.toSesion
 import com.example.viagourmet.data.Local.util.hashPassword
+import com.example.viagourmet.data.api.CafeteriaApiService
+import com.example.viagourmet.data.dao.UsuarioDao
 import com.example.viagourmet.data.model.request.LoginRequest
 import com.example.viagourmet.data.model.request.RegistroClienteRequest
+import com.example.viagourmet.data.model.request.RegistroEmpleadoRequest
+import dagger.hilt.android.qualifiers.ApplicationContext
+import java.io.File
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -21,10 +26,9 @@ sealed class AuthResult {
 @Singleton
 class AuthRepository @Inject constructor(
     private val dao: UsuarioDao,
-    private val api: CafeteriaApiService
+    private val api: CafeteriaApiService,
+    @ApplicationContext private val context: Context
 ) {
-
-    // ── Login ─────────────────────────────────────────────────────────────────
 
     suspend fun login(email: String, password: String): AuthResult {
         if (email.isBlank() || password.isBlank())
@@ -32,114 +36,80 @@ class AuthRepository @Inject constructor(
 
         val emailNorm = email.trim().lowercase()
 
-        // ── Login de EMPLEADO: autenticar contra la API (BCrypt en el servidor) ──
         return try {
-            val resp = api.loginEmpleado(
-                LoginRequest.LoginRequest(
-                    email = emailNorm,
-                    password = password
-                )
+            val respEmpleado = api.loginEmpleado(
+                LoginRequest.LoginRequest(email = emailNorm, password = password)
             )
-            if (resp.isSuccessful && resp.body()?.data != null) {
-                val empleadoData = resp.body()!!.data!!
+            if (respEmpleado.isSuccessful && respEmpleado.body()?.data != null) {
+                val empleadoData = respEmpleado.body()!!.data!!
                 val rolUsuario = when (empleadoData.rol.lowercase()) {
-                    "admin"    -> RolUsuario.ADMIN
-                    "cocinero" -> RolUsuario.COCINERO
-                    "cajero",
-                    "mesero"   -> RolUsuario.EMPLEADO
-                    else       -> RolUsuario.EMPLEADO
+                    "admin"          -> RolUsuario.ADMIN
+                    "cocinero"       -> RolUsuario.COCINERO
+                    else             -> RolUsuario.EMPLEADO
                 }
-                // Guardar también en Room local para acceso offline
-                try {
-                    val entity = crearUsuarioEntity(
-                        nombre    = empleadoData.nombre,
-                        apellido  = empleadoData.apellido,
-                        telefono  = null,
-                        email     = emailNorm,
-                        password  = password,
-                        rol       = rolUsuario,
-                        ahora     = nowString()
-                    )
-                    val entityConId = entity.copy(id = empleadoData.id)
-                    dao.insertUsuario(entityConId)
-                } catch (_: Exception) { /* ya existe en Room, ignorar */ }
+                
+                // Intentar recuperar foto local si ya existía este usuario
+                val localUser = dao.findByEmail(emailNorm)
+                val fotoUri = localUser?.fotoCredencialUri
 
                 AuthResult.Success(
                     UsuarioSesion(
                         id     = empleadoData.id,
                         nombre = empleadoData.nombre,
+                        apellido = empleadoData.apellido,
                         email  = emailNorm,
-                        rol    = rolUsuario
+                        rol    = rolUsuario,
+                        fotoUri = fotoUri
                     )
                 )
             } else {
-                // La API rechazó las credenciales → intentar como cliente
                 loginCliente(emailNorm, password)
             }
         } catch (e: Exception) {
-            // Sin conexión → intentar Room local
             loginLocal(emailNorm, password)
         }
     }
 
-    /**
-     * Login de CLIENTE contra la API.
-     * La API usa BCrypt; la app envía la contraseña en texto plano al endpoint /login.
-     */
     private suspend fun loginCliente(email: String, password: String): AuthResult {
         return try {
-            val resp = api.loginCliente(
-                com.example.viagourmet.data.model.request.LoginClienteRequest.LoginClienteRequest(
-                    email = email,
-                    contrasena = password
+            val respCliente = api.loginCliente(
+                com.example.viagourmet.data.model.request.LoginRequest.LoginRequest(
+                    email    = email,
+                    password = password
                 )
             )
-            if (resp.isSuccessful && resp.body()?.data != null) {
-                val clienteData = resp.body()!!.data!!
-                // Guardar en Room para offline
-                try {
-                    val entity = crearUsuarioEntity(
-                        nombre    = clienteData.nombre,
-                        apellido  = clienteData.apellido,
-                        telefono  = clienteData.telefono,
-                        email     = email,
-                        password  = password,
-                        rol       = RolUsuario.CLIENTE,
-                        ahora     = nowString()
-                    )
-                    dao.insertUsuario(entity.copy(id = clienteData.id))
-                } catch (_: Exception) { /* ya existe */ }
-
+            if (respCliente.isSuccessful && respCliente.body()?.data != null) {
+                val clienteData = respCliente.body()!!.data!!
+                val localUser = dao.findByEmail(email)
+                
                 AuthResult.Success(
                     UsuarioSesion(
                         id     = clienteData.id,
                         nombre = clienteData.nombre,
+                        apellido = clienteData.apellido,
+                        telefono = clienteData.telefono,
                         email  = email,
-                        rol    = RolUsuario.CLIENTE
+                        rol    = RolUsuario.CLIENTE,
+                        fotoUri = localUser?.fotoCredencialUri
                     )
                 )
             } else {
-                AuthResult.Error("Email o contraseña incorrectos")
+                loginLocal(email, password)
             }
         } catch (e: Exception) {
             loginLocal(email, password)
         }
     }
 
-    /**
-     * Fallback offline: buscar en Room con hash SHA-256 local.
-     */
     private suspend fun loginLocal(email: String, password: String): AuthResult {
         val hash = hashPassword(password)
-        val usuarioLocal = dao.login(email, hash)
-        return if (usuarioLocal != null) {
-            AuthResult.Success(usuarioLocal.toSesion())
+        val local = dao.login(email, hash)
+        return if (local != null) {
+            AuthResult.Success(local.toSesion())
         } else {
-            AuthResult.Error("Sin conexión. Verifica tu red e intenta de nuevo.")
+            AuthResult.Error("Email o contraseña incorrectos")
         }
     }
-
-    // ── Registro de clientes ──────────────────────────────────────────────────
 
     suspend fun registrar(
         nombre: String,
@@ -151,92 +121,53 @@ class AuthRepository @Inject constructor(
         rol: RolUsuario,
         fotoCredencialUri: String? = null
     ): AuthResult {
-        if (nombre.isBlank()) return AuthResult.Error("El nombre es obligatorio")
-        if (email.isBlank() || !email.contains("@")) return AuthResult.Error("Email inválido")
-        if (password.length < 6) return AuthResult.Error("La contraseña debe tener al menos 6 caracteres")
         if (password != confirmarPassword) return AuthResult.Error("Las contraseñas no coinciden")
 
         val emailNorm = email.trim().lowercase()
 
-        if (rol != RolUsuario.CLIENTE) {
-            return AuthResult.Error(
-                "Los empleados son creados por el administrador del sistema."
-            )
-        }
-
-        // ── Registro de CLIENTE ───────────────────────────────────────────────
         return try {
-            // Verificar si ya existe en la API
-            val existeResp = api.buscarClientePorEmail(emailNorm)
-            if (existeResp.isSuccessful && existeResp.body()?.data != null) {
-                return AuthResult.Error("Ya existe una cuenta con ese email")
+            val resp = if (rol == RolUsuario.CLIENTE) {
+                api.crearCliente(RegistroClienteRequest.RegistroClienteRequest(
+                    nombre = nombre.trim(), apellido = apellido, telefono = telefono, email = emailNorm, contrasena = password
+                ))
+            } else {
+                val rolParaServer = when(rol) {
+                    RolUsuario.ADMIN    -> "admin"
+                    RolUsuario.COCINERO -> "cocinero"
+                    else                -> "mesero"
+                }
+                api.crearEmpleado(RegistroEmpleadoRequest(
+                    nombre = nombre.trim(), apellido = apellido, email = emailNorm, contrasena = password, rol = rolParaServer
+                ))
             }
 
-            // Crear en la API — AHORA SÍ incluye la contraseña en texto plano
-            // La API aplica BCrypt antes de guardar en la BD
-            val crearResp = api.crearCliente(
-                RegistroClienteRequest.RegistroClienteRequest(
-                    nombre      = nombre.trim(),
-                    apellido    = apellido?.trim()?.ifBlank { null },
-                    telefono    = telefono?.trim()?.ifBlank { null },
-                    email       = emailNorm,
-                    contrasena  = password  // ← CAMPO AGREGADO
-                )
-            )
-            if (!crearResp.isSuccessful || crearResp.body()?.data == null) {
-                return AuthResult.Error("Error al crear la cuenta. Intenta de nuevo.")
-            }
-            val clienteDto = crearResp.body()!!.data!!
-
-            // Guardar contraseña (hash) en Room local para login offline
-            val entity = crearUsuarioEntity(
-                nombre    = nombre.trim(),
-                apellido  = apellido?.trim()?.ifBlank { null },
-                telefono  = telefono?.trim()?.ifBlank { null },
-                email     = emailNorm,
-                password  = password,
-                rol       = RolUsuario.CLIENTE,
-                ahora     = nowString(),
-                fotoCredencialUri = fotoCredencialUri
-            )
-            try {
-                dao.insertUsuario(entity.copy(id = clienteDto.id))
-            } catch (_: Exception) { /* ya existe */ }
-
-            AuthResult.Success(
-                UsuarioSesion(
-                    id     = clienteDto.id,
-                    nombre = nombre.trim(),
-                    email  = emailNorm,
-                    rol    = RolUsuario.CLIENTE
-                )
-            )
-        } catch (e: Exception) {
-            // Sin red → registrar solo local
-            if (dao.findByEmail(emailNorm) != null) {
-                return AuthResult.Error("Ya existe una cuenta local con ese email")
-            }
-            try {
+            if (resp.isSuccessful && resp.body()?.data != null) {
+                val data = resp.body()!!.data!!
+                val id = if (data is com.example.viagourmet.data.model.ClienteDto) data.id else (data as com.example.viagourmet.data.model.EmpleadoDto).id
+                
+                // PERSISTENCIA DE FOTO: Guardamos la URI en Room
                 val entity = crearUsuarioEntity(
-                    nombre    = nombre.trim(),
-                    apellido  = apellido?.trim()?.ifBlank { null },
-                    telefono  = telefono?.trim()?.ifBlank { null },
-                    email     = emailNorm,
-                    password  = password,
-                    rol       = RolUsuario.CLIENTE,
-                    ahora     = nowString(),
-                    fotoCredencialUri = fotoCredencialUri
+                    nombre = nombre, apellido = apellido, telefono = telefono,
+                    email = emailNorm, password = password, rol = rol,
+                    ahora = nowString(), fotoCredencialUri = fotoCredencialUri
                 )
-                val id = dao.insertUsuario(entity).toInt()
+                dao.insertUsuario(entity.copy(id = id))
+
                 AuthResult.Success(
-                    UsuarioSesion(id = id, nombre = nombre.trim(), email = emailNorm, rol = RolUsuario.CLIENTE)
+                    UsuarioSesion(id = id, nombre = nombre, apellido = apellido, telefono = telefono, email = emailNorm, rol = rol, fotoUri = fotoCredencialUri)
                 )
-            } catch (ex: android.database.sqlite.SQLiteConstraintException) {
-                AuthResult.Error("Ya existe una cuenta con ese email")
-            } catch (ex: Exception) {
-                AuthResult.Error("Error al crear la cuenta: ${ex.message}")
+            } else {
+                registrarLocal(nombre, apellido, telefono, emailNorm, password, rol, fotoCredencialUri)
             }
+        } catch (e: Exception) {
+            registrarLocal(nombre, apellido, telefono, emailNorm, password, rol, fotoCredencialUri)
         }
+    }
+
+    private suspend fun registrarLocal(n: String, a: String?, t: String?, e: String, p: String, r: RolUsuario, f: String?): AuthResult {
+        val entity = crearUsuarioEntity(n, a, t, e, p, r, nowString(), f)
+        val id = dao.insertUsuario(entity).toInt()
+        return AuthResult.Success(UsuarioSesion(id, n, a, t, e, r, f))
     }
 
     private fun nowString(): String {

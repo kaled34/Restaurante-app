@@ -11,8 +11,11 @@ enum class RolUsuario { CLIENTE, EMPLEADO, COCINERO, ADMIN }
 data class UsuarioSesion(
     val id: Int,
     val nombre: String,
+    val apellido: String? = null,
+    val telefono: String? = null,
     val email: String,
-    val rol: RolUsuario
+    val rol: RolUsuario,
+    val fotoUri: String? = null
 )
 
 @Singleton
@@ -29,8 +32,11 @@ class SessionManager @Inject constructor(
         prefs.edit()
             .putInt("user_id", usuario.id)
             .putString("user_nombre", usuario.nombre)
+            .putString("user_apellido", usuario.apellido)
+            .putString("user_telefono", usuario.telefono)
             .putString("user_email", usuario.email)
             .putString("user_rol", usuario.rol.name)
+            .putString("user_foto", usuario.fotoUri)
             .apply()
     }
 
@@ -39,10 +45,13 @@ class SessionManager @Inject constructor(
         val id = prefs.getInt("user_id", -1)
         if (id == -1) return null
         val nombre = prefs.getString("user_nombre", "") ?: ""
+        val apellido = prefs.getString("user_apellido", null)
+        val telefono = prefs.getString("user_telefono", null)
         val email = prefs.getString("user_email", "") ?: ""
         val rolStr = prefs.getString("user_rol", "CLIENTE") ?: "CLIENTE"
+        val foto = prefs.getString("user_foto", null)
         val rol = runCatching { RolUsuario.valueOf(rolStr) }.getOrDefault(RolUsuario.CLIENTE)
-        usuarioActual = UsuarioSesion(id, nombre, email, rol)
+        usuarioActual = UsuarioSesion(id, nombre, apellido, telefono, email, rol, foto)
         return usuarioActual
     }
 

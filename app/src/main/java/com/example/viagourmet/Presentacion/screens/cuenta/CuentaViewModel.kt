@@ -51,7 +51,7 @@ sealed class CuentaEvent {
 @HiltViewModel
 class CuentaViewModel @Inject constructor(
     private val repository: PedidoRepositoryLocal,
-    private val sessionManager: SessionManager
+    val sessionManager: SessionManager // Cambiado a public para acceso desde la vista
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(CuentaUiState())

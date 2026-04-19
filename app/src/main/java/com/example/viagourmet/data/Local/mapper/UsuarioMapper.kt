@@ -8,8 +8,11 @@ import com.example.viagourmet.data.Local.util.hashPassword
 fun UsuarioEntity.toSesion(): UsuarioSesion = UsuarioSesion(
     id = id,
     nombre = nombre,
+    apellido = apellido,
+    telefono = telefono,
     email = email,
-    rol = runCatching { RolUsuario.valueOf(rol) }.getOrDefault(RolUsuario.CLIENTE)
+    rol = runCatching { RolUsuario.valueOf(rol) }.getOrDefault(RolUsuario.CLIENTE),
+    fotoUri = fotoCredencialUri
 )
 
 fun crearUsuarioEntity(

@@ -198,7 +198,7 @@ fun ProductoDetalleScreen(
                             elevation = ButtonDefaults.buttonElevation(8.dp, 2.dp)
                         ) {
                             Text(
-                                if (producto.disponible) "🛒  Agregar al pedido" else "No disponible",
+                                if (producto.disponible) " Agregar al pedido" else "No disponible",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
