@@ -2,14 +2,15 @@ package com.example.viagourmet.Presentacion.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Brown80 = Color(0xFF8B5A2B)
-val Brown60 = Color(0xFFB67D4A)
-val Brown40 = Color(0xFFE6A56F)
-val Brown20 = Color(0xFFF5D7B3)
-val Cream = Color(0xFFFDF5E6)
+// Paleta Oficial Verde
+val GreenPrimary    = Color(0xFF007E67)
+val GreenDark       = Color(0xFF005C4B)
+val GreenPale       = Color(0xFFE6F4F1)
+val GreenMint       = Color(0xFFF0FAF7)
 
-val GreenSuccess = Color(0xFF4CAF50)
-val RedError = Color(0xFFE53935)
+val TextDark        = Color(0xFF0D2B24)
+val TextMid         = Color(0xFF4A7A6F)
+val TextLight       = Color(0xFF8AADA7)
 
-val TextPrimary = Color(0xFF2C2C2C)
-val TextSecondary = Color(0xFF757575)
+val ErrorRed        = Color(0xFFD32F2F)
+val White           = Color(0xFFFFFFFF)

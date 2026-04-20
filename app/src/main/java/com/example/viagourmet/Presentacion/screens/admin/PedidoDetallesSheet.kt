@@ -14,7 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.viagourmet.Presentacion.theme.Brown80
+import com.example.viagourmet.Presentacion.theme.GreenPrimary
 import com.example.viagourmet.domain.model.EstadoPedido
 import com.example.viagourmet.domain.model.Pedido
 import com.example.viagourmet.domain.model.TipoPedido
@@ -143,7 +143,7 @@ fun PedidoDetalleSheet(
                             text = "$${"%.2f".format(detalle.subtotal)}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Brown80
+                            color = GreenPrimary
                         )
                     }
                     detalle.notas?.let {
@@ -173,7 +173,7 @@ fun PedidoDetalleSheet(
                             text = "$${"%.2f".format(item.subtotal)}",
                             style = MaterialTheme.typography.bodyMedium,
                             fontWeight = FontWeight.SemiBold,
-                            color = Brown80
+                            color = GreenPrimary
                         )
                     }
                     item.notas?.let {
@@ -201,7 +201,7 @@ fun PedidoDetalleSheet(
                         text = "$${"%.2f".format(total)}",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = Brown80
+                        color = GreenPrimary
                     )
                 }
             }

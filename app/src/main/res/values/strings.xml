@@ -1,3 +1,15 @@
 <resources>
     <string name="app_name">ViaGourmet</string>
+    
+    <!-- Catálogo y Producto -->
+    <string name="producto_no_encontrado">Producto no encontrado</string>
+    <string name="regresar">Regresar</string>
+    <string name="detalle_producto">Detalle del producto</string>
+    <string name="cantidad">Cantidad</string>
+    <string name="total">Total</string>
+    <string name="agregar_al_pedido">Agregar al pedido</string>
+    <string name="no_disponible">No disponible</string>
+    <string name="agotado">Agotado</string>
+    <string name="descripcion">Descripción</string>
+    <string name="producto_no_disponible_msg">Este producto no está disponible temporalmente.</string>
 </resources>

@@ -18,24 +18,15 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
+import com.example.viagourmet.R
 import com.example.viagourmet.Presentacion.components.CantidadSelector
 import com.example.viagourmet.domain.model.Producto
-
-private val Green      = Color(0xFF007E67)
-private val GreenDark  = Color(0xFF005C4B)
-private val GreenLight = Color(0xFF00A882)
-private val GreenPale  = Color(0xFFE6F4F1)
-private val GreenMint  = Color(0xFFF0FAF7)
-private val TextDark   = Color(0xFF0D2B24)
-private val TextMid    = Color(0xFF4A7A6F)
-private val TextLight  = Color(0xFF8AADA7)
-private val CardBg     = Color(0xFFFFFFFF)
-private val ErrorRed   = Color(0xFFD32F2F)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,8 +36,6 @@ fun ProductoDetalleScreen(
     onAgregarAlPedido: (Producto, Int) -> Unit,
     viewModel: ProductoDetalleViewModel = hiltViewModel()
 ) {
-    // Busca desde el repositorio reactivo, no desde MockData.
-    // Así refleja los cambios que el admin haya hecho en EditarMenuScreen.
     val producto = remember(productoId) {
         viewModel.getProductoById(productoId)
     }
@@ -57,7 +46,7 @@ fun ProductoDetalleScreen(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(GreenMint),
+                .background(MaterialTheme.colorScheme.background),
             contentAlignment = Alignment.Center
         ) {
             Column(
@@ -67,17 +56,17 @@ fun ProductoDetalleScreen(
             ) {
                 Text("🍽", fontSize = 56.sp)
                 Text(
-                    "Producto no encontrado",
+                    stringResource(R.string.producto_no_encontrado),
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = TextDark
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Button(
                     onClick = onNavigateBack,
                     shape = RoundedCornerShape(12.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Green)
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
                 ) {
-                    Text("Regresar", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.regresar), color = Color.White, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -87,12 +76,12 @@ fun ProductoDetalleScreen(
     val subtotal = producto.precio.multiply(java.math.BigDecimal(cantidad))
 
     Scaffold(
-        containerColor = GreenMint,
+        containerColor = MaterialTheme.colorScheme.background,
         topBar = {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Brush.horizontalGradient(listOf(Green, GreenDark)))
+                    .background(Brush.horizontalGradient(listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primaryContainer)))
                     .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 14.dp)
             ) {
@@ -110,7 +99,7 @@ fun ProductoDetalleScreen(
                     ) {
                         Icon(
                             Icons.Default.ArrowBack,
-                            contentDescription = "Regresar",
+                            contentDescription = stringResource(R.string.regresar),
                             tint = Color.White,
                             modifier = Modifier.size(20.dp)
                         )
@@ -124,7 +113,7 @@ fun ProductoDetalleScreen(
                             maxLines = 1
                         )
                         Text(
-                            "Detalle del producto",
+                            stringResource(R.string.detalle_producto),
                             fontSize = 11.sp,
                             color = Color.White.copy(alpha = 0.7f)
                         )
@@ -138,7 +127,7 @@ fun ProductoDetalleScreen(
                     .fillMaxWidth()
                     .shadow(16.dp, RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
                     .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-                    .background(CardBg)
+                    .background(MaterialTheme.colorScheme.surface)
                     .padding(20.dp)
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -148,10 +137,10 @@ fun ProductoDetalleScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            "Cantidad",
+                            stringResource(R.string.cantidad),
                             fontSize = 14.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = TextMid
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         CantidadSelector(
                             cantidad = cantidad,
@@ -165,7 +154,7 @@ fun ProductoDetalleScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(1.dp)
-                            .background(Color(0xFFCCE8E2))
+                            .background(MaterialTheme.colorScheme.outline)
                     )
 
                     Row(
@@ -174,12 +163,12 @@ fun ProductoDetalleScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column {
-                            Text("Total", fontSize = 12.sp, color = TextLight)
+                            Text(stringResource(R.string.total), fontSize = 12.sp, color = MaterialTheme.colorScheme.secondary)
                             Text(
                                 "$${"%.2f".format(subtotal)}",
                                 fontSize = 20.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Green
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
 
@@ -192,13 +181,13 @@ fun ProductoDetalleScreen(
                             shape = RoundedCornerShape(14.dp),
                             modifier = Modifier.height(50.dp),
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = Green,
-                                disabledContainerColor = Green.copy(alpha = 0.35f)
+                                containerColor = MaterialTheme.colorScheme.primary,
+                                disabledContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.35f)
                             ),
                             elevation = ButtonDefaults.buttonElevation(8.dp, 2.dp)
                         ) {
                             Text(
-                                if (producto.disponible) " Agregar al pedido" else "No disponible",
+                                if (producto.disponible) stringResource(R.string.agregar_al_pedido) else stringResource(R.string.no_disponible),
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color.White
@@ -220,7 +209,7 @@ fun ProductoDetalleScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(220.dp)
-                    .background(GreenPale),
+                    .background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
                 if (producto.imagenUrl != null) {
@@ -256,10 +245,10 @@ fun ProductoDetalleScreen(
                             .align(Alignment.TopEnd)
                             .padding(12.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(ErrorRed)
+                            .background(MaterialTheme.colorScheme.error)
                             .padding(horizontal = 10.dp, vertical = 4.dp)
                     ) {
-                        Text("Agotado", fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
+                        Text(stringResource(R.string.agotado), fontSize = 12.sp, color = Color.White, fontWeight = FontWeight.Bold)
                     }
                 }
             }
@@ -271,9 +260,9 @@ fun ProductoDetalleScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(4.dp, RoundedCornerShape(18.dp), ambientColor = Green.copy(alpha = 0.08f)),
+                        .shadow(4.dp, RoundedCornerShape(18.dp), ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBg)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -288,14 +277,14 @@ fun ProductoDetalleScreen(
                                 producto.nombre,
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = TextDark,
+                                color = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.weight(1f)
                             )
                             Text(
                                 "$${"%.2f".format(producto.precio)}",
                                 fontSize = 22.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Green
+                                color = MaterialTheme.colorScheme.primary
                             )
                         }
 
@@ -303,13 +292,13 @@ fun ProductoDetalleScreen(
                             Box(
                                 modifier = Modifier
                                     .clip(RoundedCornerShape(20.dp))
-                                    .background(GreenPale)
+                                    .background(MaterialTheme.colorScheme.primaryContainer)
                                     .padding(horizontal = 10.dp, vertical = 4.dp)
                             ) {
                                 Text(
                                     cat.nombre,
                                     fontSize = 11.sp,
-                                    color = Green,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
                                     fontWeight = FontWeight.SemiBold
                                 )
                             }
@@ -320,24 +309,24 @@ fun ProductoDetalleScreen(
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .shadow(4.dp, RoundedCornerShape(18.dp), ambientColor = Green.copy(alpha = 0.08f)),
+                        .shadow(4.dp, RoundedCornerShape(18.dp), ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.08f)),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = CardBg)
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
                 ) {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Text(
-                            "Descripción",
+                            stringResource(R.string.descripcion),
                             fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
-                            color = TextMid
+                            color = MaterialTheme.colorScheme.secondary
                         )
                         Text(
                             producto.descripcion,
                             fontSize = 14.sp,
-                            color = TextDark,
+                            color = MaterialTheme.colorScheme.onSurface,
                             lineHeight = 20.sp
                         )
                     }
@@ -348,7 +337,7 @@ fun ProductoDetalleScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(14.dp))
-                            .background(ErrorRed.copy(alpha = 0.08f))
+                            .background(MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.8f))
                             .padding(14.dp)
                     ) {
                         Row(
@@ -357,9 +346,9 @@ fun ProductoDetalleScreen(
                         ) {
                             Text("❌", fontSize = 18.sp)
                             Text(
-                                "Este producto no está disponible temporalmente.",
+                                stringResource(R.string.producto_no_disponible_msg),
                                 fontSize = 13.sp,
-                                color = ErrorRed,
+                                color = MaterialTheme.colorScheme.onErrorContainer,
                                 fontWeight = FontWeight.Medium
                             )
                         }

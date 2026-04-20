@@ -8,25 +8,19 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
-import com.example.viagourmet.Presentacion.theme.Brown40
-import com.example.viagourmet.Presentacion.theme.Brown60
-import com.example.viagourmet.Presentacion.theme.Brown80
-import com.example.viagourmet.Presentacion.theme.Cream
-import com.example.viagourmet.Presentacion.theme.RedError
-import com.example.viagourmet.Presentacion.theme.TextPrimary
 
 private val LightColorScheme = lightColorScheme(
-    primary = Brown80,
+    primary = GreenPrimary,
     onPrimary = Color.White,
-    primaryContainer = Brown40,
-    onPrimaryContainer = TextPrimary,
-    secondary = Brown60,
+    primaryContainer = GreenPale,
+    onPrimaryContainer = GreenDark,
+    secondary = TextMid,
     onSecondary = Color.White,
-    background = Cream,
-    onBackground = TextPrimary,
+    background = GreenMint,
+    onBackground = TextDark,
     surface = Color.White,
-    onSurface = TextPrimary,
-    error = RedError,
+    onSurface = TextDark,
+    error = ErrorRed,
     onError = Color.White
 )
 
@@ -42,7 +36,6 @@ fun ViaGourmetTheme(
     )
 }
 
-// Tipografía personalizada
 @Composable
 fun Typography() = Typography(
     headlineLarge = TextStyle(

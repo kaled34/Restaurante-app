@@ -11,8 +11,8 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.example.viagourmet.Presentacion.theme.Brown40
-import com.example.viagourmet.Presentacion.theme.RedError
+import com.example.viagourmet.Presentacion.theme.GreenPrimary
+import com.example.viagourmet.Presentacion.theme.ErrorRed
 import com.example.viagourmet.domain.model.Producto
 
 
@@ -71,18 +71,18 @@ fun ProductoCard(
                     Text(
                         text = "$${"%.2f".format(producto.precio)}",
                         style = MaterialTheme.typography.titleMedium,
-                        color = Brown40
+                        color = GreenPrimary
                     )
 
                     if (!producto.disponible) {
                         Surface(
-                            color = RedError.copy(alpha = 0.2f),
+                            color = ErrorRed.copy(alpha = 0.2f),
                             shape = MaterialTheme.shapes.small
                         ) {
                             Text(
                                 text = "Agotado",
                                 style = MaterialTheme.typography.labelSmall,
-                                color = RedError,
+                                color = ErrorRed,
                                 modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
                             )
                         }
