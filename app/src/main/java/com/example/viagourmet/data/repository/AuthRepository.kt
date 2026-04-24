@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.example.viagourmet.Presentacion.session.RolUsuario
 import com.example.viagourmet.Presentacion.session.UsuarioSesion
+import com.example.viagourmet.Presentacion.session.SessionManager
 import com.example.viagourmet.data.Local.mapper.crearUsuarioEntity
 import com.example.viagourmet.data.Local.mapper.toSesion
 import com.example.viagourmet.data.Local.util.hashPassword
@@ -27,6 +28,7 @@ sealed class AuthResult {
 class AuthRepository @Inject constructor(
     private val dao: UsuarioDao,
     private val api: CafeteriaApiService,
+    private val sessionManager: com.example.viagourmet.Presentacion.session.SessionManager,
     @ApplicationContext private val context: Context
 ) {
 
@@ -52,16 +54,19 @@ class AuthRepository @Inject constructor(
                 val localUser = dao.findByEmail(emailNorm)
                 val fotoUri = localUser?.fotoCredencialUri
 
-                AuthResult.Success(
-                    UsuarioSesion(
-                        id     = empleadoData.id,
-                        nombre = empleadoData.nombre,
-                        apellido = empleadoData.apellido,
-                        email  = emailNorm,
-                        rol    = rolUsuario,
-                        fotoUri = fotoUri
-                    )
+                val sesion = UsuarioSesion(
+                    id     = empleadoData.id,
+                    nombre = empleadoData.nombre,
+                    apellido = empleadoData.apellido,
+                    email  = emailNorm,
+                    rol    = rolUsuario,
+                    fotoUri = fotoUri
                 )
+                
+                // Guardar sesión y opcionalmente vincular token si ya lo tenemos
+                sessionManager.guardarSesion(sesion)
+                
+                AuthResult.Success(sesion)
             } else {
                 loginCliente(emailNorm, password)
             }
@@ -82,23 +87,41 @@ class AuthRepository @Inject constructor(
                 val clienteData = respCliente.body()!!.data!!
                 val localUser = dao.findByEmail(email)
                 
-                AuthResult.Success(
-                    UsuarioSesion(
-                        id     = clienteData.id,
-                        nombre = clienteData.nombre,
-                        apellido = clienteData.apellido,
-                        telefono = clienteData.telefono,
-                        email  = email,
-                        rol    = RolUsuario.CLIENTE,
-                        fotoUri = localUser?.fotoCredencialUri
-                    )
+                val sesion = UsuarioSesion(
+                    id     = clienteData.id,
+                    nombre = clienteData.nombre,
+                    apellido = clienteData.apellido,
+                    telefono = clienteData.telefono,
+                    email  = email,
+                    rol    = RolUsuario.CLIENTE,
+                    fotoUri = localUser?.fotoCredencialUri
                 )
+                
+                sessionManager.guardarSesion(sesion)
+                
+                AuthResult.Success(sesion)
             } else {
                 loginLocal(email, password)
             }
         } catch (e: Exception) {
             loginLocal(email, password)
         }
+    }
+
+    suspend fun vincularTokenFcm(token: String) {
+        val sesion = sessionManager.obtenerSesion() ?: return
+        if (sesion.rol == RolUsuario.CLIENTE) {
+            try {
+                api.actualizarFcmToken(
+                    clienteId = sesion.id,
+                    request = com.example.viagourmet.data.model.request.FcmTokenRequest(token = token)
+                )
+                Log.d("AuthRepository", "Token FCM vinculado para cliente ${sesion.id}")
+            } catch (e: Exception) {
+                Log.e("AuthRepository", "Error vinculando token FCM: ${e.message}")
+            }
+        }
+        // Si en el futuro hay endpoint para empleados, se añadiría aquí
     }
 
     private suspend fun loginLocal(email: String, password: String): AuthResult {

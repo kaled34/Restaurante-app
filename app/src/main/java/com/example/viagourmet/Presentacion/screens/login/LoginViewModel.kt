@@ -6,6 +6,7 @@ import com.example.viagourmet.Presentacion.session.RolUsuario
 import com.example.viagourmet.Presentacion.session.SessionManager
 import com.example.viagourmet.data.repository.AuthRepository
 import com.example.viagourmet.data.repository.AuthResult
+import com.google.firebase.messaging.FirebaseMessaging
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,6 +45,17 @@ class LoginViewModel @Inject constructor(
                         return@launch
                     }
                     sessionManager.guardarSesion(result.usuario)
+                    
+                    // Vincular token FCM tras login exitoso
+                    FirebaseMessaging.getInstance().token.addOnCompleteListener { task ->
+                        if (task.isSuccessful) {
+                            val token = task.result
+                            viewModelScope.launch {
+                                authRepository.vincularTokenFcm(token)
+                            }
+                        }
+                    }
+
                     _uiState.value = LoginUiState(
                         loginExitoso = true,
                         rolLogueado = result.usuario.rol
