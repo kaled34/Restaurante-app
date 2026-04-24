@@ -1,0 +1,49 @@
+REPORTE TÉCNICO: IMPLEMENTACIÓN DE GPS Y DETECCIÓN DE FAKE GPS
+PROYECTO: La Cafetería (ViaGourmet)
+FECHA: 20 de Abril de 2026
+
+1. INTRODUCCIÓN
+---------------------------------------------------------------------------
+El proyecto "La Cafetería" integra un módulo avanzado de geolocalización diseñado para validar la posición física real de los clientes al realizar pedidos y visualizar su perfil. Para garantizar la integridad de los datos, se ha implementado un sistema de detección de fraude mediante la identificación de "Fake GPS" o ubicaciones simuladas.
+
+2. IMPLEMENTACIÓN DEL GPS
+---------------------------------------------------------------------------
+La obtención de la ubicación se basa en el framework de Google Play Services, garantizando alta precisión y eficiencia energética.
+
+Componentes clave:
+- Servicio: FusedLocationProviderClient (API recomendada por Google).
+- Precisión: Configurada como PRIORITY_HIGH_ACCURACY para obtener la posición exacta vía satélite.
+- Asincronía: Implementada mediante Corrutinas de Kotlin (suspend functions) para no bloquear la interfaz de usuario.
+
+Dirección Real (Reverse Geocoding):
+Se integra la API nativa de Android 'Geocoder' para traducir las coordenadas numéricas (latitud y longitud) en una dirección postal legible (Calle, Número, Ciudad y País). Esta función se ejecuta en un hilo de entrada/salida (Dispatchers.IO) para optimizar el rendimiento.
+
+3. DETECCIÓN DE FAKE GPS (ANTI-FRAUDE)
+---------------------------------------------------------------------------
+Para evitar que usuarios malintencionados simulen estar cerca del establecimiento, se implementaron dos capas de seguridad:
+
+Nivel 1: Verificación de Flags de Ubicación
+Cada objeto 'Location' obtenido del hardware es analizado en busca de la propiedad 'isMock'. Android marca automáticamente como verdadera esta propiedad si la ubicación fue inyectada por una aplicación de terceros (como Fake GPS Joystick).
+
+Nivel 2: Verificación de Ajustes del Sistema
+La aplicación consulta los ajustes seguros del sistema operativo (Settings.Secure) para detectar si el dispositivo tiene habilitada la opción "Permitir ubicaciones de prueba" en las opciones de desarrollador.
+
+4. FLUJO DE TRABAJO Y RESPUESTA DEL SISTEMA
+---------------------------------------------------------------------------
+Cuando el usuario accede a la pantalla de Perfil:
+
+1. Solicitud de Permisos: Se solicitan permisos de ubicación precisa en tiempo real.
+2. Escaneo de Integridad: Antes de mostrar la dirección, el PerfilViewModel consulta al LocationService si la señal es legítima.
+3. Alerta Visual: 
+   - Si se detecta fraude, el sistema activa un "Estado de Alerta".
+   - Se muestra un banner rojo de advertencia: "ATENCIÓN: Se detectó el uso de ubicación simulada".
+   - La dirección real se oculta y se reemplaza por el mensaje: "Ubicación Bloqueada (Simulación detectada)".
+4. Restricción Operativa: El sistema bloquea las funciones de pedido vinculadas a la posición geográfica hasta que el usuario desactive la simulación.
+
+5. CONCLUSIÓN
+---------------------------------------------------------------------------
+La implementación combina funcionalidad logística (dirección real) con una capa robusta de seguridad. El uso de estados reactivos (StateFlow) asegura que, tan pronto como el usuario desactive el Fake GPS, la aplicación recupere su funcionalidad normal de forma transparente y segura.
+
+---------------------------------------------------------------------------
+REPORTE GENERADO POR: KM Soft Solutions
+DESARROLLADORES: Kaled Pacheco / Marco Antonio Lequin Sanchez

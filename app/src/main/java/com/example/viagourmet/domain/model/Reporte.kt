@@ -16,7 +16,7 @@ data class Reporte(
     val pedidosDesayunos: Int,
     val pedidosComidas: Int,
     val pedidosLibres: Int,
-    val productoTops: List<ProductoTop>, // ✅ AHORA SÍ existe este parámetro
+    val productoTops: List<ProductoTop>,
     val generadoPor: Int,
     val generadoEn: LocalDateTime,
     val generadoPorEmpleado: Empleado? = null
